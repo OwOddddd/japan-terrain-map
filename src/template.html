@@ -90,6 +90,11 @@ button { cursor: pointer; }
 .chip[aria-pressed="true"] { border-color: var(--c); background: color-mix(in srgb, var(--c) 14%, transparent); }
 .chip[aria-pressed="true"] .box { background: var(--c); border-color: var(--c); }
 
+.prefs { display: flex; flex-direction: column; gap: 6px; border-top: 1px dashed var(--line); padding-top: 10px; grid-column: 1 / -1; min-width: 0; }
+.prefs .label { color: var(--muted); font-size: 12px; }
+.pref-list { display: flex; flex-wrap: wrap; gap: 4px; max-height: 90px; overflow-y: auto; }
+.pchip { border: 1px solid var(--line); background: transparent; border-radius: 999px; padding: 2px 9px; font-size: 12px; }
+.pchip[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); border-color: var(--accent); font-weight: 700; }
 .groups { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 13px; border-top: 1px dashed var(--line); padding-top: 10px; }
 .groups .label { color: var(--muted); font-size: 12px; margin-right: 2px; }
 .group { display: inline-flex; align-items: stretch; border: 1px solid var(--accent); border-radius: 6px; overflow: hidden; }
@@ -173,6 +178,8 @@ button { cursor: pointer; }
   .tabs { padding-bottom: 4px; touch-action: pan-x pan-y; }
   .tab { padding: 6px 12px 6px 10px; font-size: 14px; }
   .items { max-height: none; overflow: visible; gap: 8px; }
+  .pref-list { max-height: none; overflow: visible; gap: 6px; }
+  .pchip { padding: 5px 11px; font-size: 13px; }
   .chip { padding: 7px 11px 7px 9px; font-size: 14px; }
   .groups form { margin-left: 0; width: 100%; }
   .groups input[type="text"] { flex: 1; padding: 6px 10px; font-size: 14px; }
@@ -212,6 +219,10 @@ button { cursor: pointer; }
     <button class="btn small" id="btnNone" type="button" data-t="none"></button>
   </div>
   <div class="items" id="items"></div>
+  <div class="prefs" id="prefs">
+    <span class="label" data-t="prefsTitle"></span>
+    <div class="pref-list" id="prefList"></div>
+  </div>
   <div class="groups" id="groups">
     <span class="label" data-t="groups"></span>
     <span id="groupList"></span>
@@ -251,6 +262,8 @@ const TOPO = /*__TOPO__*/null;
 const REAL = /*__REAL__*/null;
 // 精緻版範圍：國土數值情報「土地分類メッシュ」每格只分給一個地形，相鄰範圍共用邊界（TopoJSON）
 const PTOPO = /*__PRECISE__*/null;
+// 每個地形涉及的都道府縣代碼（以精緻版範圍判定，由 tools/prefs.mjs 產生）
+const PREFS_OF = /*__PREFS__*/null;
 /*__TERRAIN__*/
 
 // 地圖本身固定配色（輸出圖片時也一樣）
@@ -275,8 +288,10 @@ const MAP_STYLE = `
 const I18N = {
   ja: {
     simple: "簡易", detail: "詳細", detailLabel: "範囲の表し方",
+    prefsTitle: "都道府県（選ぶと、その都道府県に一部でもかかる地形をすべて選択）",
+    prefAdded: (n, c) => `「${n}」の地形 ${c} 件を選択しました`, prefRemoved: (n) => `「${n}」の選択を解除しました`,
     title: "日本地形マップ", subtitle: "地形を選び、地名をタップすると読み上げます", pick: "地形を選ぶ", export: "画像を保存", exportShort: "保存",
-    done: "完了", levels: "表示する範囲", lv1: "優先", lv2: "拡張", names: "地名を表示", kana: "ふりがな", pref: "県境",
+    done: "完了", levels: "表示する範囲", lv1: "主要", lv2: "副次", names: "地名を表示", kana: "ふりがな", pref: "県境",
     clear: "すべて解除", cats: "地形の分類", all: "すべて選択", none: "選択を解除", groups: "グループ",
     groupName: "グループ名", saveGroup: "今の選択を保存", zoomIn: "拡大", zoomOut: "縮小", zoomAll: "全体",
     note: "範囲・位置は学習用の概略です", hint: "重なる地名は非表示です。拡大すると表示されます",
@@ -287,14 +302,16 @@ const I18N = {
     noGroups: "グループはまだありません。地形を選んで名前を付けると保存できます", applyGroup: "このグループを表示",
     delGroup: (n) => `グループ「${n}」を削除`, applied: (n) => `「${n}」を表示しました`, saved: (n) => `「${n}」を保存しました`,
     updated: (n) => `「${n}」を更新しました`, needName: "グループ名を入力してください", needSel: "先に地形を選んでください",
-    localOnly: "グループはこのブラウザだけに保存されました", needLevel: "「優先」と「拡張」のどちらかは選んでください",
+    localOnly: "グループはこのブラウザだけに保存されました", needLevel: "「主要」と「副次」のどちらかは選んでください",
     noSpeech: "このブラウザは読み上げに対応していません", noVoice: "日本語の音声が見つかりません。端末に日本語音声を追加してください",
     downloaded: "画像をダウンロードしました", savedImg: "画像を保存しました", exportFail: "保存できませんでした：",
   },
   zh: {
     simple: "簡易", detail: "精緻", detailLabel: "範圍顯示方式",
+    prefsTitle: "都道府縣（選取後，只要有一部分在該縣內的地形都會一起勾選）",
+    prefAdded: (n, c) => `已勾選「${n}」的 ${c} 個地形`, prefRemoved: (n) => `已取消「${n}」`,
     title: "日本地形地圖", subtitle: "勾選地形，點地名可聽讀音", pick: "選擇地形", export: "輸出圖片", exportShort: "輸出",
-    done: "完成", levels: "顯示範圍", lv1: "優先", lv2: "擴充", names: "顯示名稱", kana: "振假名", pref: "縣界",
+    done: "完成", levels: "顯示範圍", lv1: "主要", lv2: "次要", names: "顯示名稱", kana: "振假名", pref: "縣界",
     clear: "全部清除", cats: "地形分類", all: "本類全選", none: "本類取消", groups: "群組",
     groupName: "群組名稱", saveGroup: "儲存目前勾選", zoomIn: "放大", zoomOut: "縮小", zoomAll: "全域",
     note: "範圍與位置為學習用概略圖", hint: "部分地名重疊已隱藏，放大即可顯示",
@@ -305,7 +322,7 @@ const I18N = {
     noGroups: "尚無群組，勾選後輸入名稱即可儲存", applyGroup: "套用這個群組",
     delGroup: (n) => `刪除群組 ${n}`, applied: (n) => `已套用「${n}」`, saved: (n) => `已儲存「${n}」`,
     updated: (n) => `已更新「${n}」`, needName: "請輸入群組名稱", needSel: "請先勾選地形",
-    localOnly: "群組只儲存在這個瀏覽器", needLevel: "「優先」和「擴充」至少要勾一個",
+    localOnly: "群組只儲存在這個瀏覽器", needLevel: "「主要」和「次要」至少要勾一個",
     noSpeech: "這個瀏覽器不支援語音朗讀", noVoice: "找不到中文語音，請在系統安裝中文語音",
     downloaded: "圖片已下載", savedImg: "圖片已儲存", exportFail: "輸出失敗：",
   },
@@ -411,12 +428,13 @@ const state = {
   lv2: LS.get("lv2", true),
   lang: LS.get("lang", "ja") === "zh" ? "zh" : "ja",
   detail: LS.get("detail", false) === true,
+  prefs: new Set(LS.get("prefs", [])),
 };
 const T = (k, ...a) => { const v = I18N[state.lang][k]; return typeof v === "function" ? v(...a) : v; };
 if (!CATS.some((c) => c.id === state.cat)) state.cat = CATS[0].id;
 let groups = LS.get("groups", []);
-const persist = () => { LS.set("sel", [...state.sel]); LS.set("cat", state.cat); LS.set("names", state.names); LS.set("kana", state.kana); LS.set("pref", state.pref); LS.set("lv1", state.lv1); LS.set("lv2", state.lv2); LS.set("lang", state.lang); LS.set("detail", state.detail); };
-// 只勾「優先」或「擴充」其中一個時，只顯示並操作該等級的地形
+const persist = () => { LS.set("sel", [...state.sel]); LS.set("cat", state.cat); LS.set("names", state.names); LS.set("kana", state.kana); LS.set("pref", state.pref); LS.set("lv1", state.lv1); LS.set("lv2", state.lv2); LS.set("lang", state.lang); LS.set("detail", state.detail); LS.set("prefs", [...state.prefs]); };
+// 只勾「主要」或「次要」其中一個時，只顯示並操作該等級的地形
 const shown = (it) => (it.lv === 1 ? state.lv1 : state.lv2);
 const shownItems = (cat) => cat.items.filter(shown);
 
@@ -452,7 +470,7 @@ const zoom = d3.zoom().scaleExtent([0.3, 14])
     declutter();
   });
 
-// 手機等小地圖：重疊的地名先隱藏（優先項目先保留），放大後自動顯示
+// 手機等小地圖：重疊的地名先隱藏（主要項目先保留），放大後自動顯示
 function declutter() {
   const small = W < 640;
   const kept = [];
@@ -868,11 +886,42 @@ function setSheet(open) { $("sheet").classList.toggle("open", open); $("btnSheet
 $("btnSheet").onclick = () => setSheet(!$("sheet").classList.contains("open"));
 $("btnSheetClose").onclick = () => setSheet(false);
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") setSheet(false); });
+const PREF_LIST = topojson.feature(TOPO, TOPO.objects.japan).features
+  .map((f) => ({ id: f.properties.id, ja: f.properties.nam_ja })).sort((a, b) => a.id - b.id);
+const prefName = (p, full) => {
+  const n = state.lang === "zh" ? zhName(p.ja.replace(/県$/, "縣")) : p.ja;
+  return full || p.ja === "北海道" ? n : n.replace(/[都府県縣]$/, "");
+};
+function renderPrefs() {
+  const box = $("prefList"); box.textContent = "";
+  for (const p of PREF_LIST) {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "pchip";
+    b.textContent = prefName(p); b.title = prefName(p, true);
+    b.setAttribute("aria-pressed", String(state.prefs.has(p.id)));
+    b.onclick = () => togglePref(p);
+    box.appendChild(b);
+  }
+}
+function togglePref(p) {
+  const inPref = [...ITEM.values()].filter((it) => (PREFS_OF[it.id] || []).includes(p.id));
+  if (!state.prefs.has(p.id)) {
+    state.prefs.add(p.id);
+    inPref.forEach((it) => state.sel.add(it.id));
+    toast(T("prefAdded", prefName(p, true), inPref.filter(shown).length));
+  } else {
+    state.prefs.delete(p.id);
+    // 只取消不屬於其他已選縣的地形
+    inPref.forEach((it) => { if (!(PREFS_OF[it.id] || []).some((q) => state.prefs.has(q))) state.sel.delete(it.id); });
+    toast(T("prefRemoved", prefName(p, true)));
+  }
+  renderPrefs(); changed();
+}
 function changed() { persist(); renderTabs(); renderItems(); drawFeatures(); }
 
 $("btnAll").onclick = () => { shownItems(CATS.find((c) => c.id === state.cat)).forEach((i) => state.sel.add(i.id)); changed(); };
 $("btnNone").onclick = () => { shownItems(CATS.find((c) => c.id === state.cat)).forEach((i) => state.sel.delete(i.id)); changed(); };
-$("btnClear").onclick = () => { state.sel.clear(); changed(); };
+$("btnClear").onclick = () => { state.sel.clear(); state.prefs.clear(); renderPrefs(); changed(); };
 for (const [id, key] of [["optNames", "names"], ["optKana", "kana"], ["optPref", "pref"]]) {
   $(id).checked = state[key];
   $(id).onchange = (e) => { state[key] = e.target.checked; persist(); applyOptions(); };
@@ -1011,8 +1060,8 @@ for (const [id, v] of [["dSimple", false], ["dDetail", true]]) {
   $(id).onclick = () => { if (state.detail === v) return; state.detail = v; persist(); applyLang(); drawFeatures(); };
 }
 for (const [id, L] of [["langJa", "ja"], ["langZh", "zh"]]) {
-  $(id).onclick = () => { if (state.lang === L) return; state.lang = L; persist(); applyLang(); renderGroups(); changed(); };
+  $(id).onclick = () => { if (state.lang === L) return; state.lang = L; persist(); applyLang(); renderGroups(); renderPrefs(); changed(); };
 }
-applyLang(); renderTabs(); renderItems(); renderGroups();
+applyLang(); renderTabs(); renderItems(); renderPrefs(); renderGroups();
 document.fonts && document.fonts.ready.then(() => { if (lastSize) drawFeatures(); });
 </script>
