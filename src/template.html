@@ -117,7 +117,7 @@ button { cursor: pointer; }
 }
 .zoom button.fit { font-size: 11px; }
 .hint { position: absolute; left: 10px; top: 10px; max-width: calc(100% - 70px); font-size: 11px; color: #33443a; background: rgba(255,255,255,.85); padding: 3px 8px; border-radius: 4px; pointer-events: none; }
-.note { position: absolute; left: 10px; bottom: 8px; max-width: calc(100% - 20px); font-size: 11px; color: #44564c; background: rgba(255,255,255,.7); padding: 2px 6px; border-radius: 4px; pointer-events: none; }
+.note { position: absolute; left: 10px; bottom: 36px; max-width: calc(100% - 20px); font-size: 11px; color: #44564c; background: rgba(255,255,255,.7); padding: 2px 6px; border-radius: 4px; pointer-events: none; }
 
 .toast {
   position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
@@ -171,7 +171,7 @@ button { cursor: pointer; }
   .groups input[type="text"] { flex: 1; padding: 6px 10px; font-size: 14px; }
   .map-wrap { min-height: 0; }
   .zoom button { width: 38px; height: 38px; }
-  .note { font-size: 10px; bottom: 24px; }
+  .note { font-size: 10px; bottom: 34px; }
 }
 @media (prefers-reduced-motion: reduce) { .sheet, .sheet.open { transition: none; } }
 </style>
@@ -237,7 +237,8 @@ button { cursor: pointer; }
 <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
 <script>
 const TOPO = /*__TOPO__*/null;
-const NE = /*__NE__*/null;
+// 官方資料加工：河道（國土數值情報 河川）、湖岸線（同 湖沼）、平野・盆地試作範圍（同 土地分類メッシュ）
+const REAL = /*__REAL__*/null;
 /*__TERRAIN__*/
 
 // 地圖本身固定配色（輸出圖片時也一樣）
@@ -255,7 +256,7 @@ const MAP_STYLE = `
 .nokana .lbl .rb{visibility:hidden}
 .noprefs .pref{display:none}
 .lbl.speaking text{stroke:#ffe27a}
-.credit{font-family:"Hiragino Sans","Yu Gothic","Meiryo","Noto Sans JP",sans-serif;font-size:10px;fill:#5a6b62;paint-order:stroke;stroke:#fff;stroke-width:3;stroke-linejoin:round}
+.credit{font-family:"Hiragino Sans","Yu Gothic","Meiryo","Noto Sans JP",sans-serif;fill:#5a6b62;paint-order:stroke;stroke:#fff;stroke-width:3;stroke-linejoin:round}
 `;
 
 const I18N = {
@@ -266,7 +267,9 @@ const I18N = {
     groupName: "グループ名", saveGroup: "今の選択を保存", zoomIn: "拡大", zoomOut: "縮小", zoomAll: "全体",
     note: "範囲・位置は学習用の概略です", hint: "重なる地名は非表示です。拡大すると表示されます",
     saveHelp: "画像を右クリック（スマホは長押し）して保存してください。", close: "閉じる",
-    credit: "県境出典：地球地図日本（国土地理院）", mapLabel: "日本地形マップ",
+    credit: "出典：地球地図日本・地名集日本（国土地理院）", credit2: "国土数値情報 河川・湖沼・土地分類メッシュ（国土交通省）を加工して作成", mapLabel: "日本地形マップ",
+    srcRiver: "河道：国土数値情報（河川）", srcLake: "湖岸線：国土数値情報（湖沼）", srcArea: "範囲：国土数値情報（土地分類メッシュ）から作成",
+    srcGsi: "位置：国土地理院「地名集日本」", srcRough: "位置・範囲：学習用の概略",
     noGroups: "グループはまだありません。地形を選んで名前を付けると保存できます", applyGroup: "このグループを表示",
     delGroup: (n) => `グループ「${n}」を削除`, applied: (n) => `「${n}」を表示しました`, saved: (n) => `「${n}」を保存しました`,
     updated: (n) => `「${n}」を更新しました`, needName: "グループ名を入力してください", needSel: "先に地形を選んでください",
@@ -281,7 +284,9 @@ const I18N = {
     groupName: "群組名稱", saveGroup: "儲存目前勾選", zoomIn: "放大", zoomOut: "縮小", zoomAll: "全域",
     note: "範圍與位置為學習用概略圖", hint: "部分地名重疊已隱藏，放大即可顯示",
     saveHelp: "在圖片上按右鍵（手機長按）即可另存。", close: "關閉",
-    credit: "縣界出典：地球地圖日本（國土地理院）", mapLabel: "日本地形地圖",
+    credit: "出處：地球地圖日本・地名集日本（國土地理院）", credit2: "國土數值情報 河川・湖沼・土地分類網格（國土交通省）經加工製作", mapLabel: "日本地形地圖",
+    srcRiver: "河道：國土數值情報（河川）", srcLake: "湖岸線：國土數值情報（湖沼）", srcArea: "範圍：依國土數值情報（土地分類網格）製作",
+    srcGsi: "位置：國土地理院「地名集日本」", srcRough: "位置・範圍：學習用概略值",
     noGroups: "尚無群組，勾選後輸入名稱即可儲存", applyGroup: "套用這個群組",
     delGroup: (n) => `刪除群組 ${n}`, applied: (n) => `已套用「${n}」`, saved: (n) => `已儲存「${n}」`,
     updated: (n) => `已更新「${n}」`, needName: "請輸入群組名稱", needSel: "請先勾選地形",
@@ -324,14 +329,35 @@ function rubySegs(it) {
   return [{ b: it.n, r: it.k || "" }];
 }
 function fixRing(geom) { if (d3.geoArea(geom) > 2 * Math.PI) geom.coordinates.forEach((r) => r.reverse()); return geom; }
+function rewind(g) {
+  // d3 需要外環順時針；方向相反時整個多邊形會被當成「地球減去這塊」
+  const polys = g.type === "Polygon" ? [g.coordinates] : g.coordinates;
+  for (const rings of polys) if (d3.geoArea({ type: "Polygon", coordinates: rings }) > 2 * Math.PI) rings.forEach((r) => r.reverse());
+  return g;
+}
+const realOf = (it) => {
+  const k = it.cat.kind;
+  const set = k === "river" ? REAL.rivers : k === "lake" ? REAL.lakes : REAL.areas;
+  return set[it.n] || null;
+};
+for (const set of [REAL.lakes, REAL.areas]) for (const g of Object.values(set)) rewind(g);
 function geomOf(it) {
-  if (it.ne) { const g = NE[it.ne]; return g.type.includes("Polygon") ? fixRing(JSON.parse(JSON.stringify(g))) : g; }
+  const real = realOf(it);
+  if (real) return real;
   if (it.p) return fixRing({ type: "Polygon", coordinates: [[...it.p, it.p[0]]] });
   if (it.s) return { type: "LineString", coordinates: it.s };
   if (it.rad) return d3.geoCircle().center(it.c).radius(it.rad / 111.32).precision(10)();
   return null;
 }
 function labelPoint(it, geom) {
+  const real = realOf(it);
+  if (real && it.cat.kind === "river") {
+    // 最長流路的中點
+    const lines = real.coordinates.slice().sort((a, b) => b.length - a.length);
+    const ln = lines[0];
+    return ln[Math.floor(ln.length / 2)];
+  }
+  if (real && it.cat.kind === "lake") return d3.geoCentroid(real);
   if (it.l) return it.l;
   if (it.c) return it.c;
   if (it.s) return it.s[Math.floor(it.s.length / 2)];
@@ -414,8 +440,11 @@ function buildBase() {
   zoomG.append("g").attr("id", "lines");
   zoomG.append("g").attr("id", "lakes");
   labelG = svg.append("g").attr("id", "labels");
-  svg.append("text").attr("class", "credit").attr("x", W - 8).attr("y", H - 8).attr("text-anchor", "end")
-    .text(T("credit"));
+  const cfs = W < 500 ? 8.5 : 10;
+  svg.append("text").attr("class", "credit").attr("x", W - 8).attr("y", H - 8 - cfs * 1.35).attr("text-anchor", "end")
+    .attr("font-size", cfs).text(T("credit"));
+  svg.append("text").attr("class", "credit credit2").attr("x", W - 8).attr("y", H - 8).attr("text-anchor", "end")
+    .attr("font-size", cfs).text(T("credit2"));
   svg.call(zoom).on("dblclick.zoom", null);
   svg.call(zoom.transform, transform);
 }
@@ -478,6 +507,10 @@ function drawFeatures() {
   declutter();
 }
 
+function srcKey(it) {
+  if (realOf(it)) return { river: "srcRiver", lake: "srcLake" }[it.cat.kind] || "srcArea";
+  return it.src === "gsi" ? "srcGsi" : "srcRough";
+}
 function addLabel(it, cat, lonlat) {
   const p = projection(lonlat);
   const g = labelG.append("g");
@@ -499,7 +532,7 @@ function addLabel(it, cat, lonlat) {
   else if (k === "trench" || k === "fault") { color = cat.color; size = 11.5; }
 
   const lg = g.append("g").attr("class", "lbl").attr("fill", color);
-  lg.append("title").text(state.lang === "zh" ? `${it.zh}（${it.n}）` : `${it.n}（${readingOf(it)}）`);
+  lg.append("title").text((state.lang === "zh" ? `${it.zh}（${it.n}）` : `${it.n}（${readingOf(it)}）`) + "\n" + T(srcKey(it)));
   const segs = rubySegs(it);
   let x = 0;
   for (const s of segs) {
@@ -803,7 +836,8 @@ function applyLang() {
   $("langJa").setAttribute("aria-pressed", String(L === "ja"));
   $("langZh").setAttribute("aria-pressed", String(L === "zh"));
   $("kanaOpt").hidden = L === "zh";
-  svg.select(".credit").text(T("credit"));
+  svg.select(".credit:not(.credit2)").text(T("credit"));
+  svg.select(".credit2").text(T("credit2"));
 }
 for (const [id, L] of [["langJa", "ja"], ["langZh", "zh"]]) {
   $(id).onclick = () => { if (state.lang === L) return; state.lang = L; persist(); applyLang(); renderGroups(); changed(); };
