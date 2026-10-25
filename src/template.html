@@ -108,7 +108,7 @@ button { cursor: pointer; }
   flex: 1; min-height: 360px; position: relative;
   border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: #d4e6ef;
 }
-#map { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
+#map { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; overflow: visible; transform-origin: 0 0; will-change: transform; }
 #map:active { cursor: grabbing; }
 .zoom { position: absolute; right: 10px; top: 10px; display: flex; flex-direction: column; gap: 4px; }
 .zoom button {
@@ -131,6 +131,10 @@ button { cursor: pointer; }
 .modal img { max-width: 100%; max-height: 70vh; object-fit: contain; border: 1px solid var(--line); }
 .modal p { margin: 0; font-size: 13px; color: var(--muted); }
 
+/* 中等寬度：選項另起一行，避免擠成一欄 */
+@media (min-width: 641px) and (max-width: 1180px) {
+  .opts { grid-column: 1 / -1; grid-row: 2; justify-self: start; }
+}
 @media (max-width: 640px) {
   body { padding-block: 8px; gap: 8px; }
   .panel { grid-template-columns: 1fr auto auto; gap: 8px; padding: 8px 10px; }
@@ -186,6 +190,9 @@ button { cursor: pointer; }
     <span class="seg" role="group" aria-label="言語 / 語言">
       <button type="button" id="langJa" lang="ja">日本語</button><button type="button" id="langZh" lang="zh-Hant">中文</button>
     </span>
+    <span class="seg" role="group" data-t-aria="detailLabel">
+      <button type="button" id="dSimple" data-t="simple"></button><button type="button" id="dDetail" data-t="detail"></button>
+    </span>
     <span class="lv-group" role="group" data-t-aria="levels">
       <label class="opt"><input type="checkbox" id="lvPri" checked> <span data-t="lv1"></span></label>
       <label class="opt"><input type="checkbox" id="lvExt" checked> <span data-t="lv2"></span></label>
@@ -237,8 +244,10 @@ button { cursor: pointer; }
 <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
 <script>
 const TOPO = /*__TOPO__*/null;
-// 官方資料加工：河道（國土數值情報 河川）、湖岸線（同 湖沼）、平野・盆地試作範圍（同 土地分類メッシュ）
+// 官方資料加工：河道（國土數值情報 河川）、湖岸線（同 湖沼）
 const REAL = /*__REAL__*/null;
+// 精緻版範圍：國土數值情報「土地分類メッシュ」每格只分給一個地形，相鄰範圍共用邊界（TopoJSON）
+const PTOPO = /*__PRECISE__*/null;
 /*__TERRAIN__*/
 
 // 地圖本身固定配色（輸出圖片時也一樣）
@@ -261,6 +270,7 @@ const MAP_STYLE = `
 
 const I18N = {
   ja: {
+    simple: "簡易", detail: "詳細", detailLabel: "範囲の表し方",
     title: "日本地形マップ", subtitle: "地形を選び、地名をタップすると読み上げます", pick: "地形を選ぶ", export: "画像を保存", exportShort: "保存",
     done: "完了", levels: "表示する範囲", lv1: "優先", lv2: "拡張", names: "地名を表示", kana: "ふりがな", pref: "県境",
     clear: "すべて解除", cats: "地形の分類", all: "すべて選択", none: "選択を解除", groups: "グループ",
@@ -278,6 +288,7 @@ const I18N = {
     downloaded: "画像をダウンロードしました", savedImg: "画像を保存しました", exportFail: "保存できませんでした：",
   },
   zh: {
+    simple: "簡易", detail: "精緻", detailLabel: "範圍顯示方式",
     title: "日本地形地圖", subtitle: "勾選地形，點地名可聽讀音", pick: "選擇地形", export: "輸出圖片", exportShort: "輸出",
     done: "完成", levels: "顯示範圍", lv1: "優先", lv2: "擴充", names: "顯示名稱", kana: "振假名", pref: "縣界",
     clear: "全部清除", cats: "地形分類", all: "本類全選", none: "本類取消", groups: "群組",
@@ -337,11 +348,16 @@ function rewind(g) {
 }
 const realOf = (it) => {
   const k = it.cat.kind;
-  const set = k === "river" ? REAL.rivers : k === "lake" ? REAL.lakes : REAL.areas;
-  return set[it.n] || null;
+  const set = k === "river" ? REAL.rivers : k === "lake" ? REAL.lakes : null;
+  return (set && set[it.n]) || null;
 };
-for (const set of [REAL.lakes, REAL.areas]) for (const g of Object.values(set)) rewind(g);
+for (const g of Object.values(REAL.lakes)) rewind(g);
+const PRECISE = new Map(topojson.feature(PTOPO, PTOPO.objects.precise).features.map((f) => [f.properties.n, rewind(f.geometry)]));
+const PRECISE_CATS = new Set(["range", "plain", "plateau", "basin"]);
+const preciseOf = (it) => (state.detail && PRECISE_CATS.has(it.cat.id) && PRECISE.get(it.n)) || null;
 function geomOf(it) {
+  const pg = preciseOf(it);
+  if (pg) return pg;
   const real = realOf(it);
   if (real) return real;
   if (it.p) return fixRing({ type: "Polygon", coordinates: [[...it.p, it.p[0]]] });
@@ -375,11 +391,12 @@ const state = {
   lv1: LS.get("lv1", true),
   lv2: LS.get("lv2", true),
   lang: LS.get("lang", "ja") === "zh" ? "zh" : "ja",
+  detail: LS.get("detail", false) === true,
 };
 const T = (k, ...a) => { const v = I18N[state.lang][k]; return typeof v === "function" ? v(...a) : v; };
 if (!CATS.some((c) => c.id === state.cat)) state.cat = CATS[0].id;
 let groups = LS.get("groups", []);
-const persist = () => { LS.set("sel", [...state.sel]); LS.set("cat", state.cat); LS.set("names", state.names); LS.set("kana", state.kana); LS.set("pref", state.pref); LS.set("lv1", state.lv1); LS.set("lv2", state.lv2); LS.set("lang", state.lang); };
+const persist = () => { LS.set("sel", [...state.sel]); LS.set("cat", state.cat); LS.set("names", state.names); LS.set("kana", state.kana); LS.set("pref", state.pref); LS.set("lv1", state.lv1); LS.set("lv2", state.lv2); LS.set("lang", state.lang); LS.set("detail", state.detail); };
 // 只勾「優先」或「擴充」其中一個時，只顯示並操作該等級的地形
 const shown = (it) => (it.lv === 1 ? state.lv1 : state.lv2);
 const shownItems = (cat) => cat.items.filter(shown);
@@ -394,11 +411,24 @@ const FIT = { type: "LineString", coordinates: [[129.6, 31.0], [145.9, 45.55]] }
 const FIT_ALL = [[122.8, 24.0], [148.2, 46.0]];
 let W = 0, H = 0, projection, path, zoomG, labelG, transform = d3.zoomIdentity, labels = [], currents = [], obstacles = [];
 const curve = d3.line().curve(d3.curveCatmullRom.alpha(0.5));
-const zoom = d3.zoom().scaleExtent([0.3, 14]).on("zoom", (e) => {
-  transform = e.transform;
-  zoomG.attr("transform", transform);
-  placeLabels();
-}).on("end", () => declutter());
+// 拖曳、縮放手勢進行中只對整張 SVG 套 CSS transform（由 GPU 處理，不重繪向量），手勢結束才套用真正的座標並重排地名
+let gestureBase = null;
+function applyTransform() { zoomG.attr("transform", transform); placeLabels(); }
+const zoom = d3.zoom().scaleExtent([0.3, 14])
+  .on("start", (e) => { if (e.sourceEvent) gestureBase = transform; })
+  .on("zoom", (e) => {
+    transform = e.transform;
+    if (gestureBase) {
+      const s = transform.k / gestureBase.k;
+      svg.node().style.transform = `translate(${transform.x - s * gestureBase.x}px,${transform.y - s * gestureBase.y}px) scale(${s})`;
+      return;
+    }
+    applyTransform();
+  })
+  .on("end", () => {
+    if (gestureBase) { gestureBase = null; svg.node().style.transform = ""; applyTransform(); }
+    declutter();
+  });
 
 // 手機等小地圖：重疊的地名先隱藏（優先項目先保留），放大後自動顯示
 function declutter() {
@@ -468,6 +498,9 @@ function drawFeatures() {
       if (k === "area") {
         areas.append("path").attr("d", path(geom)).attr("fill", cat.color).attr("fill-opacity", .5)
           .attr("stroke", cat.color).attr("stroke-width", 1).attr("vector-effect", "non-scaling-stroke");
+      } else if (k === "band" && preciseOf(it)) {
+        areas.append("path").attr("d", path(geom)).attr("fill", cat.color).attr("fill-opacity", .5)
+          .attr("stroke", cat.color).attr("stroke-width", 1).attr("vector-effect", "non-scaling-stroke");
       } else if (k === "band") {
         const mid = it.s[Math.floor(it.s.length / 2)];
         bands.append("path").attr("d", path(geom)).attr("fill", "none").attr("stroke", cat.color)
@@ -495,7 +528,7 @@ function drawFeatures() {
           .attr("stroke-width", .8).attr("vector-effect", "non-scaling-stroke");
       }
       const l = addLabel(it, cat, labelPoint(it, geom));
-      if (k === "area" || k === "lake" || (k === "fault" && it.p)) {
+      if (k === "area" || k === "lake" || (k === "fault" && it.p) || (k === "band" && preciseOf(it))) {
         l.fb = path.bounds(geom); obstacles.push({ rect: l.fb, owner: l });
       } else if (k === "band") {
         const pts = it.s.map((c) => projection(c)), hw = it.w * pxPerKm(it.s[Math.floor(it.s.length / 2)]) / 2;
@@ -508,7 +541,8 @@ function drawFeatures() {
 }
 
 function srcKey(it) {
-  if (realOf(it)) return { river: "srcRiver", lake: "srcLake" }[it.cat.kind] || "srcArea";
+  if (preciseOf(it)) return "srcArea";
+  if (realOf(it)) return { river: "srcRiver", lake: "srcLake" }[it.cat.kind];
   return it.src === "gsi" ? "srcGsi" : "srcRough";
 }
 function addLabel(it, cat, lonlat) {
@@ -836,8 +870,13 @@ function applyLang() {
   $("langJa").setAttribute("aria-pressed", String(L === "ja"));
   $("langZh").setAttribute("aria-pressed", String(L === "zh"));
   $("kanaOpt").hidden = L === "zh";
+  $("dSimple").setAttribute("aria-pressed", String(!state.detail));
+  $("dDetail").setAttribute("aria-pressed", String(state.detail));
   svg.select(".credit:not(.credit2)").text(T("credit"));
   svg.select(".credit2").text(T("credit2"));
+}
+for (const [id, v] of [["dSimple", false], ["dDetail", true]]) {
+  $(id).onclick = () => { if (state.detail === v) return; state.detail = v; persist(); applyLang(); drawFeatures(); };
 }
 for (const [id, L] of [["langJa", "ja"], ["langZh", "zh"]]) {
   $(id).onclick = () => { if (state.lang === L) return; state.lang = L; persist(); applyLang(); renderGroups(); changed(); };

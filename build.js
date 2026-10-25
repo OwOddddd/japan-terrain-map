@@ -4,7 +4,8 @@ const p = (f) => require("path").join(__dirname, f);
 let html = fs.readFileSync(p("src/template.html"), "utf8");
 html = html
   .replace("/*__TOPO__*/null", () => fs.readFileSync(p("src/data/japan.topojson"), "utf8").trim())
-  .replace("/*__REAL__*/null", () => JSON.stringify({ rivers: JSON.parse(fs.readFileSync(p("src/data/rivers.json"), "utf8")), lakes: JSON.parse(fs.readFileSync(p("src/data/lakes.json"), "utf8")), areas: JSON.parse(fs.readFileSync(p("src/data/areas.json"), "utf8")) }))
+  .replace("/*__REAL__*/null", () => JSON.stringify({ rivers: JSON.parse(fs.readFileSync(p("src/data/rivers.json"), "utf8")), lakes: JSON.parse(fs.readFileSync(p("src/data/lakes.json"), "utf8"))}))
+  .replace("/*__PRECISE__*/null", () => fs.readFileSync(p("src/data/precise.topojson"), "utf8").trim())
   .replace("/*__TERRAIN__*/", () => fs.readFileSync(p("src/terrain.js"), "utf8"));
 fs.writeFileSync(p("japan-terrain.html"), html);
 
