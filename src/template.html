@@ -281,6 +281,9 @@ const MAP_STYLE = `
 .ldr.dc,.nonames .ldr{visibility:hidden}
 .nokana .lbl .rb{visibility:hidden}
 .noprefs .pref{display:none}
+.psel,.psel-halo{fill:none;stroke-linejoin:round}
+.psel-halo{stroke:#fff;stroke-width:4.5;stroke-opacity:.85}
+.psel{stroke:#1f2a44;stroke-width:2}
 .lbl.speaking text{stroke:#ffe27a}
 .credit{font-family:"Hiragino Sans","Yu Gothic","Meiryo","Noto Sans JP",sans-serif;fill:#5a6b62;paint-order:stroke;stroke:#fff;stroke-width:3;stroke-linejoin:round}
 `;
@@ -519,6 +522,8 @@ function buildBase() {
   zoomG.append("path").attr("class", "coast").attr("d", path(coastMesh)).attr("vector-effect", "non-scaling-stroke");
   zoomG.append("g").attr("id", "lines");
   zoomG.append("g").attr("id", "lakes");
+  // 已選的都道府縣：實線縣界畫在地形之上、地名之下
+  zoomG.append("g").attr("id", "prefSel");
   labelG = svg.append("g").attr("id", "labels");
   leaderG = labelG.append("g").attr("id", "leaders");
   const cfs = W < 500 ? 8.5 : 10;
@@ -539,6 +544,12 @@ function drawFeatures() {
   if (!zoomG) return;
   const areas = zoomG.select("#areas"), bands = zoomG.select("#bands"), lines = zoomG.select("#lines"), lakes = zoomG.select("#lakes");
   [areas, bands, lines, lakes].forEach((g) => g.selectAll("*").remove());
+  const ps = zoomG.select("#prefSel"); ps.selectAll("*").remove();
+  for (const id of state.prefs) {
+    const d = path(PREF_FEATS.get(id));
+    ps.append("path").attr("d", d).attr("class", "psel-halo").attr("vector-effect", "non-scaling-stroke");
+    ps.append("path").attr("d", d).attr("class", "psel").attr("vector-effect", "non-scaling-stroke");
+  }
   labelG.selectAll("*").remove();
   leaderG = labelG.append("g").attr("id", "leaders");
   labels = []; currents = []; obstacles = [];
@@ -886,6 +897,7 @@ function setSheet(open) { $("sheet").classList.toggle("open", open); $("btnSheet
 $("btnSheet").onclick = () => setSheet(!$("sheet").classList.contains("open"));
 $("btnSheetClose").onclick = () => setSheet(false);
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") setSheet(false); });
+const PREF_FEATS = new Map(topojson.feature(TOPO, TOPO.objects.japan).features.map((f) => [f.properties.id, f]));
 const PREF_LIST = topojson.feature(TOPO, TOPO.objects.japan).features
   .map((f) => ({ id: f.properties.id, ja: f.properties.nam_ja })).sort((a, b) => a.id - b.id);
 const prefName = (p, full) => {

@@ -100,6 +100,13 @@ sys.setrecursionlimit(100000)
 out = {}
 for name, parts in result.items():
     lines = [[[round(x, 4), round(y, 4)] for x, y in dp(l, 0.002)] for l in chain(parts)]
-    out[name] = {"type": "MultiLineString", "coordinates": [l for l in lines if len(l) >= 2]}
+    # 去掉長度不到約 300 m 的碎段與重複段：零長度線段在 iOS Safari 放大時會被畫成大圓點
+    keep, seen = [], set()
+    for l in lines:
+        L = sum(math.hypot(l[i][0] - l[i - 1][0], l[i][1] - l[i - 1][1]) for i in range(1, len(l)))
+        key = tuple(map(tuple, l)) if l[0] <= l[-1] else tuple(map(tuple, l[::-1]))
+        if len(l) >= 2 and L >= 0.003 and key not in seen:
+            seen.add(key); keep.append(l)
+    out[name] = {"type": "MultiLineString", "coordinates": keep}
 json.dump(out, open(out_path, "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
 print("\n".join(report))
