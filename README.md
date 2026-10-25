@@ -34,5 +34,5 @@ node build.js
 
 - `src/template.html`：頁面與程式
 - `src/terrain.js`：地形資料（座標為 [經度, 緯度]）
-- `src/data/`：縣界與 Natural Earth 資料
+- `src/data/japan.topojson`：縣界資料
 - `src/data/rivers.json`、`lakes.json`、`areas.json`：由 `tools/` 內的腳本從官方資料產生（原始資料需另外從國土數值情報下載）
