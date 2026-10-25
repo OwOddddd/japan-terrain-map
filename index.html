@@ -147,7 +147,8 @@ button { cursor: pointer; }
   .sheet {
     display: flex; flex-direction: column; gap: 12px;
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 15;
-    max-height: 70%; overflow-y: auto; overscroll-behavior: contain;
+    max-height: 75vh; max-height: 75dvh; overflow-y: auto; overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch; touch-action: pan-y;
     background: var(--panel); border-top: 1px solid var(--line); border-radius: 14px 14px 0 0;
     box-shadow: 0 -6px 24px rgba(0,0,0,.18);
     padding: 0 16px calc(16px + env(safe-area-inset-bottom, 0px));
@@ -160,7 +161,9 @@ button { cursor: pointer; }
   }
   .opts { justify-self: stretch; gap: 10px 14px; font-size: 14px; }
   .opts .opt { font-size: 14px; }
-  .tabs { padding-bottom: 4px; }
+  /* 抽屜內容不可被壓縮，超出時由抽屜本身捲動 */
+  .sheet > * { flex-shrink: 0; }
+  .tabs { padding-bottom: 4px; touch-action: pan-x pan-y; }
   .tab { padding: 6px 12px 6px 10px; font-size: 14px; }
   .items { max-height: none; overflow: visible; gap: 8px; }
   .chip { padding: 7px 11px 7px 9px; font-size: 14px; }
@@ -212,7 +215,6 @@ button { cursor: pointer; }
   <div class="zoom">
     <button type="button" id="zIn" aria-label="放大">+</button>
     <button type="button" id="zOut" aria-label="縮小">−</button>
-    <button type="button" id="zFit" class="fit" aria-label="顯示本土四島">本土</button>
     <button type="button" id="zAll" class="fit" aria-label="顯示含沖繩的全域">全域</button>
   </div>
   <div class="note">範圍與位置為學習用概略圖</div>
@@ -1130,7 +1132,6 @@ $("modalClose").onclick = () => { $("modal").hidden = true; URL.revokeObjectURL(
 // ---------- 縮放 ----------
 $("zIn").onclick = () => svg.transition().duration(250).call(zoom.scaleBy, 1.6);
 $("zOut").onclick = () => svg.transition().duration(250).call(zoom.scaleBy, 1 / 1.6);
-$("zFit").onclick = () => svg.transition().duration(300).call(zoom.transform, d3.zoomIdentity);
 $("zAll").onclick = () => {
   const a = projection(FIT_ALL[0]), b = projection(FIT_ALL[1]);
   const x0 = Math.min(a[0], b[0]), x1 = Math.max(a[0], b[0]), y0 = Math.min(a[1], b[1]), y1 = Math.max(a[1], b[1]);
