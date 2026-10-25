@@ -108,8 +108,11 @@ button { cursor: pointer; }
   flex: 1; min-height: 360px; position: relative;
   border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: #d4e6ef;
 }
-#map { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; overflow: visible; transform-origin: 0 0; will-change: transform; }
-#map:active { cursor: grabbing; }
+/* 手勢綁在不動的外框（.map-wrap）上；手勢進行中只移動 #mapLayer，避免手指座標隨圖層移動而回饋抖動 */
+.map-wrap { cursor: grab; touch-action: none; }
+.map-wrap:active { cursor: grabbing; }
+#mapLayer { position: absolute; inset: 0; transform-origin: 0 0; will-change: transform; }
+#map { position: absolute; inset: 0; width: 100%; height: 100%; display: block; overflow: visible; }
 .zoom { position: absolute; right: 10px; top: 10px; display: flex; flex-direction: column; gap: 4px; }
 .zoom button {
   width: 32px; height: 32px; border-radius: 6px; border: 1px solid var(--line);
@@ -221,7 +224,7 @@ button { cursor: pointer; }
 </div>
 
 <div class="map-wrap" id="mapWrap">
-  <svg id="map" xmlns="http://www.w3.org/2000/svg" role="img"></svg>
+  <div id="mapLayer"><svg id="map" xmlns="http://www.w3.org/2000/svg" role="img"></svg></div>
   <div class="zoom">
     <button type="button" id="zIn" data-t-aria="zoomIn">+</button>
     <button type="button" id="zOut" data-t-aria="zoomOut">−</button>
@@ -414,19 +417,22 @@ const curve = d3.line().curve(d3.curveCatmullRom.alpha(0.5));
 // 拖曳、縮放手勢進行中只對整張 SVG 套 CSS transform（由 GPU 處理，不重繪向量），手勢結束才套用真正的座標並重排地名
 let gestureBase = null;
 function applyTransform() { zoomG.attr("transform", transform); placeLabels(); }
+const layer = document.getElementById("mapLayer");
+const zsel = d3.select(wrap);
 const zoom = d3.zoom().scaleExtent([0.3, 14])
+  .filter((e) => (!e.ctrlKey || e.type === "wheel") && !e.button && !e.target.closest(".zoom"))
   .on("start", (e) => { if (e.sourceEvent) gestureBase = transform; })
   .on("zoom", (e) => {
     transform = e.transform;
     if (gestureBase) {
       const s = transform.k / gestureBase.k;
-      svg.node().style.transform = `translate(${transform.x - s * gestureBase.x}px,${transform.y - s * gestureBase.y}px) scale(${s})`;
+      layer.style.transform = `translate(${transform.x - s * gestureBase.x}px,${transform.y - s * gestureBase.y}px) scale(${s})`;
       return;
     }
     applyTransform();
   })
   .on("end", () => {
-    if (gestureBase) { gestureBase = null; svg.node().style.transform = ""; applyTransform(); }
+    if (gestureBase) { gestureBase = null; layer.style.transform = ""; applyTransform(); }
     declutter();
   });
 
@@ -475,8 +481,8 @@ function buildBase() {
     .attr("font-size", cfs).text(T("credit"));
   svg.append("text").attr("class", "credit credit2").attr("x", W - 8).attr("y", H - 8).attr("text-anchor", "end")
     .attr("font-size", cfs).text(T("credit2"));
-  svg.call(zoom).on("dblclick.zoom", null);
-  svg.call(zoom.transform, transform);
+  zsel.call(zoom).on("dblclick.zoom", null);
+  zsel.call(zoom.transform, transform);
 }
 
 function pxPerKm(lonlat) {
@@ -838,14 +844,14 @@ $("btnExport").onclick = exportPNG;
 $("modalClose").onclick = () => { $("modal").hidden = true; URL.revokeObjectURL($("modalImg").src); };
 
 // ---------- 縮放 ----------
-$("zIn").onclick = () => svg.transition().duration(250).call(zoom.scaleBy, 1.6);
-$("zOut").onclick = () => svg.transition().duration(250).call(zoom.scaleBy, 1 / 1.6);
+$("zIn").onclick = () => zsel.transition().duration(250).call(zoom.scaleBy, 1.6);
+$("zOut").onclick = () => zsel.transition().duration(250).call(zoom.scaleBy, 1 / 1.6);
 $("zAll").onclick = () => {
   const a = projection(FIT_ALL[0]), b = projection(FIT_ALL[1]);
   const x0 = Math.min(a[0], b[0]), x1 = Math.max(a[0], b[0]), y0 = Math.min(a[1], b[1]), y1 = Math.max(a[1], b[1]);
   const k = Math.min((W - 40) / (x1 - x0), (H - 40) / (y1 - y0));
   const t = d3.zoomIdentity.translate(W / 2 - k * (x0 + x1) / 2, H / 2 - k * (y0 + y1) / 2).scale(k);
-  svg.transition().duration(300).call(zoom.transform, t);
+  zsel.transition().duration(300).call(zoom.transform, t);
 };
 
 let toastTimer;
