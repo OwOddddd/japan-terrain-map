@@ -265,6 +265,7 @@ const MAP_STYLE = `
 .lbl{cursor:pointer}
 .nonames .lbl{visibility:hidden}
 .dc > .lbl{visibility:hidden}
+.ldr.dc,.nonames .ldr{visibility:hidden}
 .nokana .lbl .rb{visibility:hidden}
 .noprefs .pref{display:none}
 .lbl.speaking text{stroke:#ffe27a}
@@ -358,6 +359,21 @@ for (const g of Object.values(REAL.lakes)) rewind(g);
 const PRECISE = new Map(topojson.feature(PTOPO, PTOPO.objects.precise).features.map((f) => [f.properties.n, rewind(f.geometry)]));
 const PRECISE_CATS = new Set(["range", "plain", "plateau", "basin"]);
 const preciseOf = (it) => (state.detail && PRECISE_CATS.has(it.cat.id) && PRECISE.get(it.n)) || null;
+// 同類相鄰的範圍分到不同深淺（貪婪著色），避免整片同色分不出界線
+const SHADE = (() => {
+  const geos = PTOPO.objects.precise.geometries, nb = topojson.neighbors(geos), idx = new Map();
+  const catOf = new Map(); for (const it of ITEM.values()) catOf.set(it.n, it.cat.id);
+  geos.forEach((g, i) => {
+    const used = new Set(nb[i].filter((j) => idx.has(j) && catOf.get(geos[j].properties.n) === catOf.get(g.properties.n)).map((j) => idx.get(j)));
+    let c = 0; while (used.has(c)) c++;
+    idx.set(i, c);
+  });
+  return new Map(geos.map((g, i) => [g.properties.n, idx.get(i)]));
+})();
+const shadeOf = (it) => {
+  const c = d3.color(it.cat.color), k = SHADE.get(it.n) % 4;
+  return [c, c.darker(0.6), c.brighter(0.75), c.darker(1.1)][k].formatHex();
+};
 function geomOf(it) {
   const pg = preciseOf(it);
   if (pg) return pg;
@@ -412,7 +428,7 @@ const prefMesh = topojson.mesh(TOPO, TOPO.objects.japan, (a, b) => a !== b);
 const coastMesh = topojson.mesh(TOPO, TOPO.objects.japan, (a, b) => a === b);
 const FIT = { type: "LineString", coordinates: [[129.6, 31.0], [145.9, 45.55]] };
 const FIT_ALL = [[122.8, 24.0], [148.2, 46.0]];
-let W = 0, H = 0, projection, path, zoomG, labelG, transform = d3.zoomIdentity, labels = [], currents = [], obstacles = [];
+let leaderG, W = 0, H = 0, projection, path, zoomG, labelG, transform = d3.zoomIdentity, labels = [], currents = [], obstacles = [];
 const curve = d3.line().curve(d3.curveCatmullRom.alpha(0.5));
 // 拖曳、縮放手勢進行中只對整張 SVG 套 CSS transform（由 GPU 處理，不重繪向量），手勢結束才套用真正的座標並重排地名
 let gestureBase = null;
@@ -446,12 +462,22 @@ function declutter() {
     const l = labels[i];
     const cs = candidates(l);
     const free = cs.filter((c) => !kept.some((k) => hitRect(c.r, k)));
-    const clear = free.find((c) => cs.length === 1 || !obstacles.some((ob) => hitObstacle(c.r, ob)));
-    const pick = clear || free[0];
+    let pick = null;
+    if (cs.length === 1) pick = free[0];
+    else {
+      // 優先選不蓋到其他範圍的位置；都會蓋到時選蓋得最少的
+      let bestN = Infinity;
+      for (const c of free) {
+        const n = coverOthers(l, c.r);
+        if (n < bestN) { bestN = n; pick = c; }
+        if (!n) break;
+      }
+    }
     const hide = small && state.names && !pick;
     moveLabel(l, pick || cs[0]);
     if (!hide) kept.push((pick || cs[0]).r);
     l.g.classed("dc", hide);
+    if (l.leader) l.leader.classed("dc", hide);
     if (hide) hidden++;
   }
   $("dcHint").hidden = !hidden;
@@ -476,6 +502,7 @@ function buildBase() {
   zoomG.append("g").attr("id", "lines");
   zoomG.append("g").attr("id", "lakes");
   labelG = svg.append("g").attr("id", "labels");
+  leaderG = labelG.append("g").attr("id", "leaders");
   const cfs = W < 500 ? 8.5 : 10;
   svg.append("text").attr("class", "credit").attr("x", W - 8).attr("y", H - 8 - cfs * 1.35).attr("text-anchor", "end")
     .attr("font-size", cfs).text(T("credit"));
@@ -495,18 +522,22 @@ function drawFeatures() {
   const areas = zoomG.select("#areas"), bands = zoomG.select("#bands"), lines = zoomG.select("#lines"), lakes = zoomG.select("#lakes");
   [areas, bands, lines, lakes].forEach((g) => g.selectAll("*").remove());
   labelG.selectAll("*").remove();
+  leaderG = labelG.append("g").attr("id", "leaders");
   labels = []; currents = []; obstacles = [];
   for (const cat of CATS) {
     for (const it of cat.items) {
       if (!state.sel.has(it.id) || !shown(it)) continue;
       const geom = geomOf(it);
       const k = cat.kind;
-      if (k === "area") {
+      if (k === "area" && preciseOf(it)) {
+        areas.append("path").attr("d", path(geom)).attr("fill", shadeOf(it)).attr("fill-opacity", .6)
+          .attr("stroke", d3.color(cat.color).darker(1.3).formatHex()).attr("stroke-width", 1.1).attr("vector-effect", "non-scaling-stroke");
+      } else if (k === "area") {
         areas.append("path").attr("d", path(geom)).attr("fill", cat.color).attr("fill-opacity", .5)
           .attr("stroke", cat.color).attr("stroke-width", 1).attr("vector-effect", "non-scaling-stroke");
       } else if (k === "band" && preciseOf(it)) {
-        areas.append("path").attr("d", path(geom)).attr("fill", cat.color).attr("fill-opacity", .5)
-          .attr("stroke", cat.color).attr("stroke-width", 1).attr("vector-effect", "non-scaling-stroke");
+        areas.append("path").attr("d", path(geom)).attr("fill", shadeOf(it)).attr("fill-opacity", .6)
+          .attr("stroke", d3.color(cat.color).darker(1.3).formatHex()).attr("stroke-width", 1.1).attr("vector-effect", "non-scaling-stroke");
       } else if (k === "band") {
         const mid = it.s[Math.floor(it.s.length / 2)];
         bands.append("path").attr("d", path(geom)).attr("fill", "none").attr("stroke", cat.color)
@@ -533,9 +564,17 @@ function drawFeatures() {
         lakes.append("path").attr("d", path(geom)).attr("fill", cat.color).attr("stroke", "#2f7ab3")
           .attr("stroke-width", .8).attr("vector-effect", "non-scaling-stroke");
       }
-      const l = addLabel(it, cat, labelPoint(it, geom));
-      if (k === "area" || k === "lake" || (k === "fault" && it.p) || (k === "band" && preciseOf(it))) {
-        l.fb = path.bounds(geom); obstacles.push({ rect: l.fb, owner: l });
+      const isRegion = k === "area" || k === "lake" || (k === "fault" && it.p) || (k === "band" && preciseOf(it));
+      let polys = null, anchor = null;
+      if (isRegion) {
+        polys = projectPolys(geom);
+        // 精緻版、湖泊、沒有指定位置的範圍：用範圍內離邊界最遠的點當錨點，地名一定落在自己的範圍裡
+        if (preciseOf(it) || k === "lake" || !it.l) anchor = projection.invert(polylabel(largestPoly(polys)));
+      }
+      const l = addLabel(it, cat, anchor || labelPoint(it, geom));
+      if (isRegion) {
+        l.fb = path.bounds(geom); l.polys = polys;
+        obstacles.push({ rect: l.fb, owner: l, polys });
       } else if (k === "band") {
         const pts = it.s.map((c) => projection(c)), hw = it.w * pxPerKm(it.s[Math.floor(it.s.length / 2)]) / 2;
         l.band = { pts, hw }; obstacles.push({ caps: pts, r: hw, rect: path.bounds(geom), owner: l });
@@ -544,6 +583,61 @@ function drawFeatures() {
   }
   placeLabels();
   declutter();
+}
+
+// 幾何輔助：投影後的多邊形（基準座標）、最大塊、polylabel（範圍內離邊界最遠的點）
+function projectPolys(geom) {
+  const list = geom.type === "Polygon" ? [geom.coordinates] : geom.type === "MultiPolygon" ? geom.coordinates : [];
+  return list.map((rings) => {
+    const pr = rings.map((r) => r.map((c) => projection(c)));
+    const xs = pr[0].map((q) => q[0]), ys = pr[0].map((q) => q[1]);
+    return { rings: pr, box: [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)], area: Math.abs(d3.polygonArea(pr[0])) };
+  });
+}
+const largestPoly = (polys) => polys.reduce((a, b) => (b.area > a.area ? b : a)).rings;
+function inPolys(polys, x, y) {
+  for (const pg of polys) {
+    if (x < pg.box[0] || x > pg.box[2] || y < pg.box[1] || y > pg.box[3]) continue;
+    if (d3.polygonContains(pg.rings[0], [x, y]) && !pg.rings.slice(1).some((h) => d3.polygonContains(h, [x, y]))) return true;
+  }
+  return false;
+}
+function polylabel(rings, precision = 0.5) {
+  const outer = rings[0];
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const [x, y] of outer) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
+  const size = Math.min(x1 - x0, y1 - y0);
+  if (!size) return [x0, y0];
+  const segD2 = (px, py, a, b) => {
+    let x = a[0], y = a[1], dx = b[0] - x, dy = b[1] - y;
+    if (dx || dy) { const t = ((px - x) * dx + (py - y) * dy) / (dx * dx + dy * dy); if (t > 1) { x = b[0]; y = b[1]; } else if (t > 0) { x += dx * t; y += dy * t; } }
+    return (px - x) ** 2 + (py - y) ** 2;
+  };
+  const dist = (x, y) => {
+    let inside = false, m = Infinity;
+    for (const r of rings) for (let i = 0, j = r.length - 1; i < r.length; j = i++) {
+      const a = r[i], b = r[j];
+      if ((a[1] > y) !== (b[1] > y) && x < ((b[0] - a[0]) * (y - a[1])) / (b[1] - a[1]) + a[0]) inside = !inside;
+      m = Math.min(m, segD2(x, y, a, b));
+    }
+    return (inside ? 1 : -1) * Math.sqrt(m);
+  };
+  const cell = (x, y, h) => { const d = dist(x, y); return { x, y, h, d, max: d + h * Math.SQRT2 }; };
+  const heap = [];
+  const push = (c) => { heap.push(c); let i = heap.length - 1; while (i) { const p = (i - 1) >> 1; if (heap[p].max >= heap[i].max) break; [heap[p], heap[i]] = [heap[i], heap[p]]; i = p; } };
+  const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < heap.length && heap[l].max > heap[m].max) m = l; if (r < heap.length && heap[r].max > heap[m].max) m = r; if (m === i) break; [heap[m], heap[i]] = [heap[i], heap[m]]; i = m; } } return top; };
+  const h0 = size / 2;
+  for (let x = x0; x < x1; x += size) for (let y = y0; y < y1; y += size) push(cell(x + h0, y + h0, h0));
+  let best = cell((x0 + x1) / 2, (y0 + y1) / 2, 0);
+  let n = 0;
+  while (heap.length && n++ < 4000) {
+    const c = pop();
+    if (c.d > best.d) best = c;
+    if (c.max - best.d <= precision) continue;
+    const h = c.h / 2;
+    push(cell(c.x - h, c.y - h, h)); push(cell(c.x + h, c.y - h, h)); push(cell(c.x - h, c.y + h, h)); push(cell(c.x + h, c.y + h, h));
+  }
+  return [best.x, best.y];
 }
 
 function srcKey(it) {
@@ -607,12 +701,17 @@ function candidates(l) {
   const t = transform, bb = l.bb, gap = 3;
   const at = (key, x0, y0) => ({ key, r: { x0, y0, x1: x0 + bb.w, y1: y0 + bb.h } });
   const center = () => at("c", t.applyX(l.p[0]) + bb.x, t.applyY(l.p[1]) + bb.y);
-  if (l.fb) {
-    const x0 = t.applyX(l.fb[0][0]), y0 = t.applyY(l.fb[0][1]), x1 = t.applyX(l.fb[1][0]), y1 = t.applyY(l.fb[1][1]);
-    if (x1 - x0 >= bb.w * 1.15 && y1 - y0 >= bb.h * 1.8) return [center()];
-    const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
-    return [at("r", x1 + gap, cy - bb.h / 2), at("l", x0 - gap - bb.w, cy - bb.h / 2),
-      at("b", cx - bb.w / 2, y1 + gap), at("t", cx - bb.w / 2, y0 - gap - bb.h)];
+  if (l.polys) {
+    const c = center();
+    if (rectInside(l.polys, c.r)) return [c];
+    // 放不進去：在錨點周圍 8 個方向、3 種距離找位置，之後用引線連回錨點
+    const ax = t.applyX(l.p[0]), ay = t.applyY(l.p[1]), out = [];
+    const dirs = [[1, 0], [-1, 0], [0, -1], [0, 1], [1, -1], [-1, -1], [1, 1], [-1, 1]];
+    for (const d of [10, 26, 46]) dirs.forEach(([ux, uy], i) => {
+      const cx = ax + ux * (bb.w / 2 + d), cy = ay + uy * (bb.h / 2 + d * 0.8);
+      out.push(at("o" + d + "_" + i, cx - bb.w / 2, cy - bb.h / 2));
+    });
+    return out;
   }
   if (l.band) {
     const r = l.band.hw * t.k;
@@ -628,6 +727,25 @@ function candidates(l) {
   return [center()];
 }
 const hitRect = (a, b) => a.x0 < b.x1 && a.x1 > b.x0 && a.y0 < b.y1 && a.y1 > b.y0;
+// 地名外框上的 9 個取樣點（換回基準座標）
+function samples(r) {
+  const t = transform, out = [];
+  for (const fx of [0.08, 0.5, 0.92]) for (const fy of [0.15, 0.5, 0.85])
+    out.push([(r.x0 + (r.x1 - r.x0) * fx - t.x) / t.k, (r.y0 + (r.y1 - r.y0) * fy - t.y) / t.k]);
+  return out;
+}
+const rectInside = (polys, r) => samples(r).every(([x, y]) => inPolys(polys, x, y));
+// 地名蓋住「其他」範圍的程度（取樣點數）
+function coverOthers(l, r) {
+  const pts = samples(r);
+  let n = 0;
+  for (const ob of obstacles) {
+    if (ob.owner === l) continue;
+    if (ob.polys) n += pts.filter(([x, y]) => inPolys(ob.polys, x, y)).length;
+    else if (hitObstacle(r, ob)) n += 3;
+  }
+  return n;
+}
 function hitObstacle(r, ob) {
   const t = transform;
   const box = { x0: t.applyX(ob.rect[0][0]) - (ob.r || 0) * t.k, y0: t.applyY(ob.rect[0][1]) - (ob.r || 0) * t.k,
@@ -649,7 +767,15 @@ function hitObstacle(r, ob) {
 function moveLabel(l, c) {
   l.key = c.key;
   l.g.attr("transform", `translate(${c.r.x0 - l.bb.x},${c.r.y0 - l.bb.y})`);
-  // 標記（火山符號等）只有置中時才在原位
+  // 範圍外的地名：畫一條引線連到範圍內的錨點
+  if (!l.polys) return;
+  if (!l.leader) l.leader = leaderG.append("g").attr("class", "ldr");
+  if (c.key === "c") { l.leader.attr("display", "none"); return; }
+  const ax = transform.applyX(l.p[0]), ay = transform.applyY(l.p[1]), r = c.r;
+  const ex = Math.max(r.x0, Math.min(ax, r.x1)), ey = Math.max(r.y0, Math.min(ay, r.y1));
+  l.leader.attr("display", null).html(
+    `<line x1="${ex}" y1="${ey}" x2="${ax}" y2="${ay}" stroke="#2b2622" stroke-width="1.3" stroke-opacity=".9"/>` +
+    `<circle cx="${ax}" cy="${ay}" r="3" fill="#2b2622" stroke="#fff" stroke-width="1"/>`);
 }
 
 function placeLabels() {
