@@ -58,6 +58,9 @@ button { cursor: pointer; }
 .sheet-head, .m-only { display: none; }
 .opts { grid-column: 2; grid-row: 1; justify-self: end; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
 .tabs, .items-head, .items, .groups { grid-column: 1 / -1; min-width: 0; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.seg button { border: 0; background: transparent; padding: 4px 11px; font-size: 13px; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); font-weight: 700; }
 .lv-group { display: inline-flex; gap: 10px; padding: 3px 10px; border: 1px solid var(--line); border-radius: 6px; }
 .opt { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; user-select: none; cursor: pointer; }
 .opt input { accent-color: var(--accent); width: 16px; height: 16px; margin: 0; }
@@ -135,9 +138,10 @@ button { cursor: pointer; }
 @media (max-width: 640px) {
   body { padding-block: 8px; gap: 8px; }
   .panel { grid-template-columns: 1fr auto auto; gap: 8px; padding: 8px 10px; }
-  .panel h1 { font-size: 16px; }
+  .panel h1 { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
   .panel h1 small { display: none; }
   .m-only { display: inline-flex; }
+  .d-only { display: none; }
   #btnSheet { grid-column: 2; grid-row: 1; align-items: center; gap: 6px; }
   #btnSheet b { background: var(--accent); color: var(--on-accent); border-radius: 999px; padding: 0 7px; font-size: 12px; font-variant-numeric: tabular-nums; }
   #btnExport { padding-inline: 10px; }
@@ -171,62 +175,65 @@ button { cursor: pointer; }
   .groups input[type="text"] { flex: 1; padding: 6px 10px; font-size: 14px; }
   .map-wrap { min-height: 0; }
   .zoom button { width: 38px; height: 38px; }
-  .note { font-size: 10px; }
+  .note { font-size: 10px; bottom: 24px; }
 }
 @media (prefers-reduced-motion: reduce) { .sheet, .sheet.open { transition: none; } }
 </style>
 
 <div class="panel" id="panel">
-  <h1>日本地形地圖<small>勾選地形，點地名可聽讀音</small></h1>
-  <button class="btn m-only" id="btnSheet" type="button" aria-expanded="false" aria-controls="sheet">選擇地形 <b id="selCount">0</b></button>
-  <button class="btn primary" id="btnExport" type="button">輸出圖片</button>
+  <h1><span data-t="title"></span><small data-t="subtitle"></small></h1>
+  <button class="btn m-only" id="btnSheet" type="button" aria-expanded="false" aria-controls="sheet"><span data-t="pick"></span> <b id="selCount">0</b></button>
+  <button class="btn primary" id="btnExport" type="button"><span class="d-only" data-t="export"></span><span class="m-only" data-t="exportShort"></span></button>
   <div class="sheet" id="sheet">
-  <div class="sheet-head"><span>選擇地形</span><button class="btn primary" id="btnSheetClose" type="button">完成</button></div>
+  <div class="sheet-head"><span data-t="pick"></span><button class="btn primary" id="btnSheetClose" type="button" data-t="done"></button></div>
   <div class="opts">
-    <span class="lv-group" role="group" aria-label="顯示範圍">
-      <label class="opt"><input type="checkbox" id="lvPri" checked> 優先</label>
-      <label class="opt"><input type="checkbox" id="lvExt" checked> 擴充</label>
+    <span class="seg" role="group" aria-label="言語 / 語言">
+      <button type="button" id="langJa" lang="ja">日本語</button><button type="button" id="langZh" lang="zh-Hant">中文</button>
     </span>
-    <label class="opt"><input type="checkbox" id="optNames" checked> 顯示名稱</label>
-    <label class="opt"><input type="checkbox" id="optKana" checked> 振假名</label>
-    <label class="opt"><input type="checkbox" id="optPref" checked> 縣界</label>
-    <button class="btn" id="btnClear" type="button">全部清除</button>
+    <span class="lv-group" role="group" data-t-aria="levels">
+      <label class="opt"><input type="checkbox" id="lvPri" checked> <span data-t="lv1"></span></label>
+      <label class="opt"><input type="checkbox" id="lvExt" checked> <span data-t="lv2"></span></label>
+    </span>
+    <label class="opt"><input type="checkbox" id="optNames" checked> <span data-t="names"></span></label>
+    <label class="opt" id="kanaOpt"><input type="checkbox" id="optKana" checked> <span data-t="kana"></span></label>
+    <label class="opt"><input type="checkbox" id="optPref" checked> <span data-t="pref"></span></label>
+    <button class="btn" id="btnClear" type="button" data-t="clear"></button>
   </div>
-  <div class="tabs" id="tabs" role="tablist" aria-label="地形分類"></div>
+  <div class="tabs" id="tabs" role="tablist" data-t-aria="cats"></div>
   <div class="items-head">
     <span id="catTitle"></span>
-    <button class="btn small" id="btnAll" type="button">本類全選</button>
-    <button class="btn small" id="btnNone" type="button">本類取消</button>
+    <button class="btn small" id="btnAll" type="button" data-t="all"></button>
+    <button class="btn small" id="btnNone" type="button" data-t="none"></button>
   </div>
   <div class="items" id="items"></div>
   <div class="groups" id="groups">
-    <span class="label">群組</span>
+    <span class="label" data-t="groups"></span>
     <span id="groupList"></span>
     <form id="groupForm">
-      <input type="text" id="groupName" placeholder="群組名稱" maxlength="30" aria-label="群組名稱">
-      <button class="btn small" type="submit">儲存目前勾選</button>
+      <input type="text" id="groupName" maxlength="30" data-t-ph="groupName" data-t-aria="groupName">
+      <button class="btn small" type="submit" data-t="saveGroup"></button>
     </form>
   </div>
   </div>
 </div>
 
 <div class="map-wrap" id="mapWrap">
-  <svg id="map" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="日本地形地圖"></svg>
+  <svg id="map" xmlns="http://www.w3.org/2000/svg" role="img"></svg>
   <div class="zoom">
-    <button type="button" id="zIn" aria-label="放大">+</button>
-    <button type="button" id="zOut" aria-label="縮小">−</button>
-    <button type="button" id="zAll" class="fit" aria-label="顯示含沖繩的全域">全域</button>
+    <button type="button" id="zIn" data-t-aria="zoomIn">+</button>
+    <button type="button" id="zOut" data-t-aria="zoomOut">−</button>
+    <button type="button" id="zAll" class="fit" data-t="zoomAll"></button>
   </div>
-  <div class="note">範圍與位置為學習用概略圖</div>
-  <div class="hint" id="dcHint" hidden>部分地名重疊已隱藏，放大即可顯示</div>
+  <div class="note" data-t="note"></div>
+  <div class="hint" id="dcHint" hidden data-t="hint"></div>
 </div>
 
 <div class="toast" id="toast" hidden></div>
 <div class="modal" id="modal" hidden>
   <div class="box">
-    <p>在圖片上按右鍵（手機長按）即可另存。</p>
-    <img id="modalImg" alt="輸出的地圖圖片">
-    <div><button class="btn" type="button" id="modalClose">關閉</button></div>
+    <p data-t="saveHelp"></p>
+    <img id="modalImg" alt="">
+    <div><button class="btn" type="button" id="modalClose" data-t="close"></button></div>
   </div>
 </div>
 
@@ -272,7 +279,7 @@ const CATS = [
     {n: "八溝山地",lv: 2,k: "やみぞさんち",s: [[140.3,36.95],[140.25,36.55],[140.2,36.3]],w: 15},
     {n: "丹沢山地",lv: 2,k: "たんざわさんち",s: [[139,35.5],[139.25,35.45]],w: 15},
     {n: "三国山脈",lv: 2,k: "みくにさんみゃく",s: [[138.6,36.85],[138.95,36.85],[139.2,36.95]],w: 15},
-    {n: "飛騨高地",lv: 2,k: "ひだこうち",s: [[137.05,36.3],[137.3,36.05],[137.35,35.8]],w: 40},
+    {n: "飛驒高地",lv: 2,k: "ひだこうち",s: [[137.05,36.3],[137.3,36.05],[137.35,35.8]],w: 40},
     {n: "美濃三河高原",lv: 2,k: "みのみかわこうげん",s: [[137.15,35.35],[137.5,35.15]],w: 30},
     {n: "伊吹山地",lv: 2,k: "いぶきさんち",s: [[136.3,35.7],[136.4,35.45]],w: 12},
     {n: "比良山地",lv: 2,k: "ひらさんち",s: [[135.85,35.35],[135.9,35.15]],w: 8},
@@ -735,6 +742,50 @@ const MAP_STYLE = `
 .credit{font-family:"Hiragino Sans","Yu Gothic","Meiryo","Noto Sans JP",sans-serif;font-size:10px;fill:#5a6b62;paint-order:stroke;stroke:#fff;stroke-width:3;stroke-linejoin:round}
 `;
 
+const I18N = {
+  ja: {
+    title: "日本地形マップ", subtitle: "地形を選び、地名をタップすると読み上げます", pick: "地形を選ぶ", export: "画像を保存", exportShort: "保存",
+    done: "完了", levels: "表示する範囲", lv1: "優先", lv2: "拡張", names: "地名を表示", kana: "ふりがな", pref: "県境",
+    clear: "すべて解除", cats: "地形の分類", all: "すべて選択", none: "選択を解除", groups: "グループ",
+    groupName: "グループ名", saveGroup: "今の選択を保存", zoomIn: "拡大", zoomOut: "縮小", zoomAll: "全体",
+    note: "範囲・位置は学習用の概略です", hint: "重なる地名は非表示です。拡大すると表示されます",
+    saveHelp: "画像を右クリック（スマホは長押し）して保存してください。", close: "閉じる",
+    credit: "県境出典：地球地図日本（国土地理院）", mapLabel: "日本地形マップ",
+    noGroups: "グループはまだありません。地形を選んで名前を付けると保存できます", applyGroup: "このグループを表示",
+    delGroup: (n) => `グループ「${n}」を削除`, applied: (n) => `「${n}」を表示しました`, saved: (n) => `「${n}」を保存しました`,
+    updated: (n) => `「${n}」を更新しました`, needName: "グループ名を入力してください", needSel: "先に地形を選んでください",
+    localOnly: "グループはこのブラウザだけに保存されました", needLevel: "「優先」と「拡張」のどちらかは選んでください",
+    noSpeech: "このブラウザは読み上げに対応していません", noVoice: "日本語の音声が見つかりません。端末に日本語音声を追加してください",
+    downloaded: "画像をダウンロードしました", savedImg: "画像を保存しました", exportFail: "保存できませんでした：",
+  },
+  zh: {
+    title: "日本地形地圖", subtitle: "勾選地形，點地名可聽讀音", pick: "選擇地形", export: "輸出圖片", exportShort: "輸出",
+    done: "完成", levels: "顯示範圍", lv1: "優先", lv2: "擴充", names: "顯示名稱", kana: "振假名", pref: "縣界",
+    clear: "全部清除", cats: "地形分類", all: "本類全選", none: "本類取消", groups: "群組",
+    groupName: "群組名稱", saveGroup: "儲存目前勾選", zoomIn: "放大", zoomOut: "縮小", zoomAll: "全域",
+    note: "範圍與位置為學習用概略圖", hint: "部分地名重疊已隱藏，放大即可顯示",
+    saveHelp: "在圖片上按右鍵（手機長按）即可另存。", close: "關閉",
+    credit: "縣界出典：地球地圖日本（國土地理院）", mapLabel: "日本地形地圖",
+    noGroups: "尚無群組，勾選後輸入名稱即可儲存", applyGroup: "套用這個群組",
+    delGroup: (n) => `刪除群組 ${n}`, applied: (n) => `已套用「${n}」`, saved: (n) => `已儲存「${n}」`,
+    updated: (n) => `已更新「${n}」`, needName: "請輸入群組名稱", needSel: "請先勾選地形",
+    localOnly: "群組只儲存在這個瀏覽器", needLevel: "「優先」和「擴充」至少要勾一個",
+    noSpeech: "這個瀏覽器不支援語音朗讀", noVoice: "找不到中文語音，請在系統安裝中文語音",
+    downloaded: "圖片已下載", savedImg: "圖片已儲存", exportFail: "輸出失敗：",
+  },
+};
+const CAT_ZH = { range: "山脈・山地", volcano: "火山", mountain: "山", plain: "平野", plateau: "台地・高原", basin: "盆地",
+  river: "河川", lake: "湖泊", peninsula: "半島", cape: "岬角", bay: "灣・灘", sea: "海・海峽・水道", current: "海流",
+  island: "島嶼", trench: "海溝・海槽", fault: "構造線", landmark: "代表地形" };
+// 中文名稱：日文新字體轉繁體，「ヶ」省略、「の／ノ」改「之」；片假名名稱另外翻譯
+const ZH_NAME = { "シラス台地": "白砂台地", "四国カルスト": "四國喀斯特", "サロマ湖": "佐呂間湖", "オホーツク海": "鄂霍次克海",
+  "東シナ海": "東海", "フィリピン海": "菲律賓海", "トカラ海峡": "吐噶喇海峽", "トカラ列島": "吐噶喇列島", "リマン海流": "里曼寒流",
+  "相模トラフ": "相模海槽", "駿河トラフ": "駿河海槽", "南海トラフ": "南海海槽", "フォッサマグナ": "大地溝帶",
+  "黒潮（日本海流）": "黑潮（日本暖流）", "親潮（千島海流）": "親潮（千島寒流）", "対馬海流": "對馬暖流" };
+const ZH_CHAR = Object.fromEntries([..."両兩乗乘亀龜児兒剣劍剱劍国國塩鹽増增壱壹売賣奥奧対對峡峽広廣恋戀択擇曽曾来來桜櫻歩步歯齒沢澤浅淺浜濱湾灣湿濕瀬瀨焼燒状狀狭狹礼禮禅禪穂穗竜龍総總経經縄繩蔵藏讃讚豊豐軽輕辺邊関關隠隱静靜騨驒黒黑黄黃横橫徳德糸絲与與会會猪豬"]
+  .reduce((a, c, i, arr) => (i % 2 ? a : [...a, [c, arr[i + 1]]]), []));
+const zhName = (n) => ZH_NAME[n] || [...n.replace(/ヶ/g, "").replace(/[のノ]/g, "之")].map((c) => ZH_CHAR[c] || c).join("");
+
 const LS = {
   get(k, d) { try { const v = localStorage.getItem("jpterrain:" + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
   set(k, v) { try { localStorage.setItem("jpterrain:" + k, JSON.stringify(v)); } catch {} },
@@ -743,9 +794,12 @@ const cap = (name) => (window.claude && window.claude.use ? window.claude.use(na
 
 // ---------- 資料整理 ----------
 const ITEM = new Map();
-for (const cat of CATS) cat.items.forEach((it) => { it.id = cat.id + ":" + it.n; it.cat = cat; ITEM.set(it.id, it); });
+for (const cat of CATS) cat.items.forEach((it) => { it.id = cat.id + ":" + it.n; it.cat = cat; it.zh = zhName(it.n); ITEM.set(it.id, it); });
+const catLabel = (cat) => (state.lang === "zh" ? CAT_ZH[cat.id] : cat.label);
+const nameOf = (it) => (state.lang === "zh" ? it.zh : it.n);
 
 function rubySegs(it) {
+  if (state.lang === "zh") return [{ b: it.zh, r: "" }];
   if (it.r) {
     const segs = []; const re = /\[([^|\]]+)\|([^\]]*)\]|([^\[]+)/g; let m;
     while ((m = re.exec(it.r))) segs.push(m[3] !== undefined ? { b: m[3], r: "" } : { b: m[1], r: m[2] });
@@ -778,10 +832,12 @@ const state = {
   pref: LS.get("pref", true),
   lv1: LS.get("lv1", true),
   lv2: LS.get("lv2", true),
+  lang: LS.get("lang", "ja") === "zh" ? "zh" : "ja",
 };
+const T = (k, ...a) => { const v = I18N[state.lang][k]; return typeof v === "function" ? v(...a) : v; };
 if (!CATS.some((c) => c.id === state.cat)) state.cat = CATS[0].id;
 let groups = LS.get("groups", []);
-const persist = () => { LS.set("sel", [...state.sel]); LS.set("cat", state.cat); LS.set("names", state.names); LS.set("kana", state.kana); LS.set("pref", state.pref); LS.set("lv1", state.lv1); LS.set("lv2", state.lv2); };
+const persist = () => { LS.set("sel", [...state.sel]); LS.set("cat", state.cat); LS.set("names", state.names); LS.set("kana", state.kana); LS.set("pref", state.pref); LS.set("lv1", state.lv1); LS.set("lv2", state.lv2); LS.set("lang", state.lang); };
 // 只勾「優先」或「擴充」其中一個時，只顯示並操作該等級的地形
 const shown = (it) => (it.lv === 1 ? state.lv1 : state.lv2);
 const shownItems = (cat) => cat.items.filter(shown);
@@ -794,7 +850,7 @@ const prefMesh = topojson.mesh(TOPO, TOPO.objects.japan, (a, b) => a !== b);
 const coastMesh = topojson.mesh(TOPO, TOPO.objects.japan, (a, b) => a === b);
 const FIT = { type: "LineString", coordinates: [[129.6, 31.0], [145.9, 45.55]] };
 const FIT_ALL = [[122.8, 24.0], [148.2, 46.0]];
-let W = 0, H = 0, projection, path, zoomG, labelG, transform = d3.zoomIdentity, labels = [], currents = [];
+let W = 0, H = 0, projection, path, zoomG, labelG, transform = d3.zoomIdentity, labels = [], currents = [], obstacles = [];
 const curve = d3.line().curve(d3.curveCatmullRom.alpha(0.5));
 const zoom = d3.zoom().scaleExtent([0.3, 14]).on("zoom", (e) => {
   transform = e.transform;
@@ -810,13 +866,13 @@ function declutter() {
   const order = labels.map((l, i) => i).sort((a, b) => labels[a].lv - labels[b].lv || a - b);
   for (const i of order) {
     const l = labels[i];
-    let hide = false;
-    if (small && state.names) {
-      const x = transform.applyX(l.p[0]) + l.bb.x, y = transform.applyY(l.p[1]) + l.bb.y;
-      const r = { x0: x, y0: y, x1: x + l.bb.w, y1: y + l.bb.h };
-      hide = kept.some((k) => r.x0 < k.x1 && r.x1 > k.x0 && r.y0 < k.y1 && r.y1 > k.y0);
-      if (!hide) kept.push(r);
-    }
+    const cs = candidates(l);
+    const free = cs.filter((c) => !kept.some((k) => hitRect(c.r, k)));
+    const clear = free.find((c) => cs.length === 1 || !obstacles.some((ob) => hitObstacle(c.r, ob)));
+    const pick = clear || free[0];
+    const hide = small && state.names && !pick;
+    moveLabel(l, pick || cs[0]);
+    if (!hide) kept.push((pick || cs[0]).r);
     l.g.classed("dc", hide);
     if (hide) hidden++;
   }
@@ -832,11 +888,6 @@ function buildBase() {
   svg.append("style").text(MAP_STYLE);
   const defs = svg.append("defs");
   defs.append("clipPath").attr("id", "landClip").append("path").attr("d", path(land));
-  for (const [id, col] of [["arrWarm", "#d9472f"], ["arrCold", "#3567c9"]]) {
-    defs.append("marker").attr("id", id).attr("viewBox", "0 0 10 10").attr("refX", 5).attr("refY", 5)
-      .attr("markerWidth", 3.2).attr("markerHeight", 3.2).attr("orient", "auto-start-reverse")
-      .append("path").attr("d", "M0,0L10,5L0,10z").attr("fill", col);
-  }
   svg.append("rect").attr("class", "sea").attr("width", W).attr("height", H);
   zoomG = svg.append("g");
   zoomG.append("path").attr("class", "land").attr("d", path(land));
@@ -848,7 +899,7 @@ function buildBase() {
   zoomG.append("g").attr("id", "lakes");
   labelG = svg.append("g").attr("id", "labels");
   svg.append("text").attr("class", "credit").attr("x", W - 8).attr("y", H - 8).attr("text-anchor", "end")
-    .text("縣界出典：地球地圖日本（國土地理院）");
+    .text(T("credit"));
   svg.call(zoom).on("dblclick.zoom", null);
   svg.call(zoom.transform, transform);
 }
@@ -863,7 +914,7 @@ function drawFeatures() {
   const areas = zoomG.select("#areas"), bands = zoomG.select("#bands"), lines = zoomG.select("#lines"), lakes = zoomG.select("#lakes");
   [areas, bands, lines, lakes].forEach((g) => g.selectAll("*").remove());
   labelG.selectAll("*").remove();
-  labels = []; currents = [];
+  labels = []; currents = []; obstacles = [];
   for (const cat of CATS) {
     for (const it of cat.items) {
       if (!state.sel.has(it.id) || !shown(it)) continue;
@@ -882,9 +933,9 @@ function drawFeatures() {
       } else if (k === "current") {
         const col = it.warm ? "#d9472f" : "#3567c9";
         const cp = labelG.append("path").attr("fill", "none").attr("stroke", col).attr("stroke-opacity", .75)
-          .attr("stroke-width", 4).attr("stroke-linecap", "round")
-          .attr("marker-end", `url(#${it.warm ? "arrWarm" : "arrCold"})`);
-        currents.push({ el: cp, pts: it.s.map((c) => projection(c)) });
+          .attr("stroke-width", 4).attr("stroke-linecap", "round");
+        const head = labelG.append("path").attr("fill", col);
+        currents.push({ el: cp, head, pts: it.s.map((c) => projection(c)) });
       } else if (k === "trench") {
         lines.append("path").attr("d", path(geom)).attr("fill", "none").attr("stroke", cat.color).attr("stroke-width", 2.4)
           .attr("stroke-dasharray", "10 4").attr("stroke-linecap", "round").attr("vector-effect", "non-scaling-stroke");
@@ -898,7 +949,13 @@ function drawFeatures() {
         lakes.append("path").attr("d", path(geom)).attr("fill", cat.color).attr("stroke", "#2f7ab3")
           .attr("stroke-width", .8).attr("vector-effect", "non-scaling-stroke");
       }
-      addLabel(it, cat, labelPoint(it, geom));
+      const l = addLabel(it, cat, labelPoint(it, geom));
+      if (k === "area" || k === "lake" || (k === "fault" && it.p)) {
+        l.fb = path.bounds(geom); obstacles.push({ rect: l.fb, owner: l });
+      } else if (k === "band") {
+        const pts = it.s.map((c) => projection(c)), hw = it.w * pxPerKm(it.s[Math.floor(it.s.length / 2)]) / 2;
+        l.band = { pts, hw }; obstacles.push({ caps: pts, r: hw, rect: path.bounds(geom), owner: l });
+      }
     }
   }
   placeLabels();
@@ -919,14 +976,14 @@ function addLabel(it, cat, lonlat) {
   } else if (k === "band") { color = "#6b4320"; size = 12.5; }
   else if (k === "area") { color = d3.color(cat.color).darker(1.6).formatHex(); size = 12; }
   else if (k === "river") { color = "#1c5a99"; size = 11.5; }
-  else if (k === "lake") { color = "#1c5a99"; size = 11; align = "start"; dx = 8; }
+  else if (k === "lake") { color = "#1c5a99"; size = 11; }
   else if (k === "text") { color = cat.color; size = 12; }
   else if (k === "water") { color = cat.color; size = it.big ? 17 : 11.5; }
   else if (k === "current") { color = it.warm ? "#b8341f" : "#2b55aa"; size = 12; }
   else if (k === "trench" || k === "fault") { color = cat.color; size = 11.5; }
 
   const lg = g.append("g").attr("class", "lbl").attr("fill", color);
-  lg.append("title").text(`${it.n}（${readingOf(it)}）`);
+  lg.append("title").text(state.lang === "zh" ? `${it.zh}（${it.n}）` : `${it.n}（${readingOf(it)}）`);
   const segs = rubySegs(it);
   let x = 0;
   for (const s of segs) {
@@ -951,12 +1008,76 @@ function addLabel(it, cat, lonlat) {
   lg.attr("transform", `translate(${ox},${oy})`);
   lg.on("click", (e) => { e.stopPropagation(); speak(it, lg); });
   const bb = lg.node().getBBox();
-  labels.push({ g, p, lv: it.lv, bb: { x: bb.x + ox, y: bb.y + oy, w: bb.width, h: bb.height } });
+  const l = { g, p, lv: it.lv, key: "c", bb: { x: bb.x + ox, y: bb.y + oy, w: bb.width, h: bb.height } };
+  labels.push(l);
+  return l;
+}
+
+// 候選位置（螢幕座標的地名外框）：地形在畫面上比地名小時，改放在地形上下左右，不蓋住範圍
+function candidates(l) {
+  const t = transform, bb = l.bb, gap = 3;
+  const at = (key, x0, y0) => ({ key, r: { x0, y0, x1: x0 + bb.w, y1: y0 + bb.h } });
+  const center = () => at("c", t.applyX(l.p[0]) + bb.x, t.applyY(l.p[1]) + bb.y);
+  if (l.fb) {
+    const x0 = t.applyX(l.fb[0][0]), y0 = t.applyY(l.fb[0][1]), x1 = t.applyX(l.fb[1][0]), y1 = t.applyY(l.fb[1][1]);
+    if (x1 - x0 >= bb.w * 1.15 && y1 - y0 >= bb.h * 1.8) return [center()];
+    const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+    return [at("r", x1 + gap, cy - bb.h / 2), at("l", x0 - gap - bb.w, cy - bb.h / 2),
+      at("b", cx - bb.w / 2, y1 + gap), at("t", cx - bb.w / 2, y0 - gap - bb.h)];
+  }
+  if (l.band) {
+    const r = l.band.hw * t.k;
+    if (2 * r >= bb.h * 1.4) return [center()];
+    const pts = l.band.pts, m = Math.floor(pts.length / 2);
+    const a = t.apply(pts[Math.max(0, m - 1)]), b = t.apply(pts[Math.min(pts.length - 1, m + 1)]), c = t.apply(pts[m]);
+    let nx = -(b[1] - a[1]), ny = b[0] - a[0];
+    const nl = Math.hypot(nx, ny) || 1; nx /= nl; ny /= nl;
+    if (nx < 0) { nx = -nx; ny = -ny; } // 先試右側
+    const d = r + gap + (Math.abs(nx) * bb.w + Math.abs(ny) * bb.h) / 2;
+    return [at("r", c[0] + nx * d - bb.w / 2, c[1] + ny * d - bb.h / 2), at("l", c[0] - nx * d - bb.w / 2, c[1] - ny * d - bb.h / 2)];
+  }
+  return [center()];
+}
+const hitRect = (a, b) => a.x0 < b.x1 && a.x1 > b.x0 && a.y0 < b.y1 && a.y1 > b.y0;
+function hitObstacle(r, ob) {
+  const t = transform;
+  const box = { x0: t.applyX(ob.rect[0][0]) - (ob.r || 0) * t.k, y0: t.applyY(ob.rect[0][1]) - (ob.r || 0) * t.k,
+    x1: t.applyX(ob.rect[1][0]) + (ob.r || 0) * t.k, y1: t.applyY(ob.rect[1][1]) + (ob.r || 0) * t.k };
+  if (!hitRect(r, box)) return false;
+  if (!ob.caps) return true;
+  const rr = ob.r * t.k;
+  for (let i = 0; i < ob.caps.length - 1; i++) {
+    const a = t.apply(ob.caps[i]), b = t.apply(ob.caps[i + 1]);
+    const steps = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / Math.max(4, rr)));
+    for (let j = 0; j <= steps; j++) {
+      const x = a[0] + (b[0] - a[0]) * j / steps, y = a[1] + (b[1] - a[1]) * j / steps;
+      const dx = Math.max(r.x0 - x, 0, x - r.x1), dy = Math.max(r.y0 - y, 0, y - r.y1);
+      if (dx * dx + dy * dy < rr * rr) return true;
+    }
+  }
+  return false;
+}
+function moveLabel(l, c) {
+  l.key = c.key;
+  l.g.attr("transform", `translate(${c.r.x0 - l.bb.x},${c.r.y0 - l.bb.y})`);
+  // 標記（火山符號等）只有置中時才在原位
 }
 
 function placeLabels() {
-  for (const c of currents) c.el.attr("d", curve(c.pts.map((p) => transform.apply(p))));
-  for (const l of labels) l.g.attr("transform", `translate(${transform.applyX(l.p[0])},${transform.applyY(l.p[1])})`);
+  for (const c of currents) {
+    c.el.attr("d", curve(c.pts.map((p) => transform.apply(p))));
+    // 箭頭方向取線條最後 10px 的實際走向，避免曲線端點切線失準
+    const n = c.el.node(), L = n.getTotalLength();
+    const e = n.getPointAtLength(L), b = n.getPointAtLength(Math.max(0, L - 10));
+    const a = Math.atan2(e.y - b.y, e.x - b.x), len = 14, hw = 7;
+    const ux = Math.cos(a), uy = Math.sin(a);
+    const tip = [e.x + ux * 4, e.y + uy * 4], base = [tip[0] - ux * len, tip[1] - uy * len];
+    c.head.attr("d", `M${tip}L${base[0] - uy * hw},${base[1] + ux * hw}L${base[0] + uy * hw},${base[1] - ux * hw}Z`);
+  }
+  for (const l of labels) {
+    const cs = candidates(l);
+    moveLabel(l, cs.find((c) => c.key === l.key) || cs[0]);
+  }
 }
 function applyOptions() {
   const el = svg.node();
@@ -967,24 +1088,28 @@ function applyOptions() {
 }
 
 // ---------- 語音 ----------
-function readingOf(it) { return it.k || rubySegs(it).map((s) => s.r || s.b).join(""); }
-let jaVoice = null;
+function readingOf(it) { return state.lang === "zh" ? it.zh : it.k || rubySegs(it).map((s) => s.r || s.b).join(""); }
+let jaVoice = null, zhVoice = null;
 function pickVoice() {
-  const vs = speechSynthesis.getVoices().filter((v) => /^ja/i.test(v.lang));
+  const all = speechSynthesis.getVoices();
+  const vs = all.filter((v) => /^ja/i.test(v.lang));
   jaVoice = vs.find((v) => /Google|Nanami|Haruka|Kyoko|O-ren/i.test(v.name)) || vs[0] || null;
+  const zs = all.filter((v) => /^zh/i.test(v.lang));
+  zhVoice = zs.find((v) => /TW|Hant/i.test(v.lang)) || zs[0] || null;
 }
 if ("speechSynthesis" in window) { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
 function speak(it, lg) {
-  if (!("speechSynthesis" in window)) { toast("這個瀏覽器不支援語音朗讀"); return; }
+  if (!("speechSynthesis" in window)) { toast(T("noSpeech")); return; }
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(readingOf(it).replace(/、/g, "。"));
-  u.lang = "ja-JP"; u.rate = 0.9;
-  if (jaVoice) u.voice = jaVoice;
+  const voice = state.lang === "zh" ? zhVoice : jaVoice;
+  u.lang = state.lang === "zh" ? "zh-TW" : "ja-JP"; u.rate = 0.9;
+  if (voice) u.voice = voice;
   labelG.selectAll(".lbl").classed("speaking", false);
   lg.classed("speaking", true);
   u.onend = u.onerror = () => lg.classed("speaking", false);
   speechSynthesis.speak(u);
-  if (!jaVoice && speechSynthesis.getVoices().length) toast("找不到日語語音，請在系統安裝日語語音");
+  if (!voice && speechSynthesis.getVoices().length) toast(T("noVoice"));
 }
 
 // ---------- 操作面板 ----------
@@ -1002,7 +1127,7 @@ function renderTabs() {
     b.setAttribute("role", "tab"); b.setAttribute("aria-selected", String(cat.id === state.cat));
     b.innerHTML = `<span class="sw"></span><span></span><span class="cnt">${n}/${vis.length}</span>`;
     b.querySelector(".sw").style.background = cat.color;
-    b.children[1].textContent = cat.label;
+    b.children[1].textContent = catLabel(cat);
     b.onclick = () => { state.cat = cat.id; persist(); renderTabs(); renderItems(); };
     tabs.appendChild(b);
   }
@@ -1010,7 +1135,7 @@ function renderTabs() {
 function renderItems() {
   const cat = CATS.find((c) => c.id === state.cat);
   const vis = shownItems(cat);
-  $("catTitle").textContent = `${cat.label}（${vis.length}）`;
+  $("catTitle").textContent = `${catLabel(cat)}（${vis.length}）`;
   const box = $("items"); box.textContent = "";
   for (const it of vis) {
     const b = document.createElement("button");
@@ -1018,7 +1143,7 @@ function renderItems() {
     b.setAttribute("aria-pressed", String(state.sel.has(it.id)));
     b.title = readingOf(it);
     b.innerHTML = `<span class="box"></span><span></span>`;
-    b.children[1].textContent = it.n;
+    b.children[1].textContent = nameOf(it);
     b.onclick = () => { state.sel.has(it.id) ? state.sel.delete(it.id) : state.sel.add(it.id); changed(); };
     box.appendChild(b);
   }
@@ -1040,7 +1165,7 @@ for (const [id, key] of [["optNames", "names"], ["optKana", "kana"], ["optPref",
 for (const [id, key, other] of [["lvPri", "lv1", "lv2"], ["lvExt", "lv2", "lv1"]]) {
   $(id).checked = state[key];
   $(id).onchange = (e) => {
-    if (!e.target.checked && !state[other]) { e.target.checked = true; toast("「優先」和「擴充」至少要勾一個"); return; }
+    if (!e.target.checked && !state[other]) { e.target.checked = true; toast(T("needLevel")); return; }
     state[key] = e.target.checked; changed();
   };
 }
@@ -1049,32 +1174,32 @@ for (const [id, key, other] of [["lvPri", "lv1", "lv2"], ["lvExt", "lv2", "lv1"]
 let groupDoc = null;
 function renderGroups() {
   const list = $("groupList"); list.textContent = "";
-  if (!groups.length) { const s = document.createElement("span"); s.className = "empty"; s.textContent = "尚無群組，勾選後輸入名稱即可儲存"; list.appendChild(s); }
+  if (!groups.length) { const s = document.createElement("span"); s.className = "empty"; s.textContent = T("noGroups"); list.appendChild(s); }
   list.style.display = "contents";
   groups.forEach((gr, i) => {
     const wrapEl = document.createElement("span"); wrapEl.className = "group";
     const a = document.createElement("button"); a.type = "button"; a.className = "apply";
-    a.textContent = `${gr.name}（${gr.ids.length}）`; a.title = "套用這個群組";
-    a.onclick = () => { state.sel = new Set(gr.ids.filter((id) => ITEM.has(id))); changed(); toast(`已套用「${gr.name}」`); };
+    a.textContent = `${gr.name}（${gr.ids.length}）`; a.title = T("applyGroup");
+    a.onclick = () => { state.sel = new Set(gr.ids.filter((id) => ITEM.has(id))); changed(); toast(T("applied", gr.name)); };
     const d = document.createElement("button"); d.type = "button"; d.className = "del"; d.textContent = "×";
-    d.setAttribute("aria-label", `刪除群組 ${gr.name}`);
+    d.setAttribute("aria-label", T("delGroup", gr.name));
     d.onclick = () => { groups.splice(i, 1); saveGroups(); };
     wrapEl.append(a, d); list.appendChild(wrapEl);
   });
 }
 async function saveGroups() {
   LS.set("groups", groups); renderGroups();
-  if (groupDoc) { try { await groupDoc.set({ list: groups }); } catch { toast("群組只儲存在這個瀏覽器"); } }
+  if (groupDoc) { try { await groupDoc.set({ list: groups }); } catch { toast(T("localOnly")); } }
 }
 $("groupForm").onsubmit = (e) => {
   e.preventDefault();
   const name = $("groupName").value.trim();
-  if (!name) { toast("請輸入群組名稱"); $("groupName").focus(); return; }
-  if (!state.sel.size) { toast("請先勾選地形"); return; }
+  if (!name) { toast(T("needName")); $("groupName").focus(); return; }
+  if (!state.sel.size) { toast(T("needSel")); return; }
   const ex = groups.find((g) => g.name === name);
   if (ex) ex.ids = [...state.sel]; else groups.push({ name, ids: [...state.sel] });
   $("groupName").value = "";
-  saveGroups(); toast(ex ? `已更新「${name}」` : `已儲存「${name}」`);
+  saveGroups(); toast(ex ? T("updated", name) : T("saved", name));
 };
 (async () => {
   const [db, user] = await Promise.all([cap("db"), cap("user")]);
@@ -1113,17 +1238,17 @@ async function exportPNG() {
       a.href = URL.createObjectURL(blob); a.download = filename;
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-      toast("圖片已下載"); return;
+      toast(T("downloaded")); return;
     }
     const dl = await downloadsP;
     if (dl) {
-      try { await dl.save({ filename, data: blob }); toast("圖片已儲存"); return; }
+      try { await dl.save({ filename, data: blob }); toast(T("savedImg")); return; }
       catch (e) { if (e && (e.code === "declined" || e.code === "rate_limited")) return; }
     }
     const url = URL.createObjectURL(blob);
     $("modalImg").src = url; $("modal").hidden = false;
   } catch (err) {
-    toast("輸出失敗：" + (err && err.message ? err.message : err));
+    toast(T("exportFail") + (err && err.message ? err.message : err));
   } finally { btn.disabled = false; }
 }
 $("btnExport").onclick = exportPNG;
@@ -1151,7 +1276,23 @@ new ResizeObserver(() => {
   lastSize = s; transform = d3.zoomIdentity; fullRender();
 }).observe(wrap);
 
-renderTabs(); renderItems(); renderGroups();
+function applyLang() {
+  const L = state.lang;
+  document.documentElement.lang = L === "zh" ? "zh-Hant" : "ja";
+  document.title = T("title");
+  document.querySelectorAll("[data-t]").forEach((el) => { el.textContent = T(el.dataset.t); });
+  document.querySelectorAll("[data-t-ph]").forEach((el) => { el.placeholder = T(el.dataset.tPh); });
+  document.querySelectorAll("[data-t-aria]").forEach((el) => { el.setAttribute("aria-label", T(el.dataset.tAria)); });
+  $("map").setAttribute("aria-label", T("mapLabel"));
+  $("langJa").setAttribute("aria-pressed", String(L === "ja"));
+  $("langZh").setAttribute("aria-pressed", String(L === "zh"));
+  $("kanaOpt").hidden = L === "zh";
+  svg.select(".credit").text(T("credit"));
+}
+for (const [id, L] of [["langJa", "ja"], ["langZh", "zh"]]) {
+  $(id).onclick = () => { if (state.lang === L) return; state.lang = L; persist(); applyLang(); renderGroups(); changed(); };
+}
+applyLang(); renderTabs(); renderItems(); renderGroups();
 document.fonts && document.fonts.ready.then(() => { if (lastSize) drawFeatures(); });
 </script>
 
