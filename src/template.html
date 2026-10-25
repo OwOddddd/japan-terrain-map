@@ -1,0 +1,671 @@
+<meta charset="utf-8">
+<title>日本地形地圖</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<style>
+/* Layout: 桌機＝上方操作面板＋下方地圖；手機＝精簡標題列＋全幅地圖，地形選單改為底部抽屜 */
+:root {
+  --bg: #e9eee8;
+  --panel: #f8faf6;
+  --fg: #1e2a23;
+  --muted: #5c6b62;
+  --line: #cfd9cf;
+  --accent: #2c6a4c;
+  --accent-soft: #dcebe2;
+  --on-accent: #ffffff;
+  --danger: #b2402f;
+  --font-ui: "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif;
+  --radius: 8px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #141b17; --panel: #1c2520; --fg: #e3ebe5; --muted: #9aaba0; --line: #33433a;
+    --accent: #7cc39c; --accent-soft: #24382d; --on-accent: #0f1a14; --danger: #e5826f;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #141b17; --panel: #1c2520; --fg: #e3ebe5; --muted: #9aaba0; --line: #33433a;
+  --accent: #7cc39c; --accent-soft: #24382d; --on-accent: #0f1a14; --danger: #e5826f;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+@supports (height: 100dvh) { body { height: 100dvh; } }
+body {
+  margin: 0;
+  background: var(--bg); color: var(--fg); font-family: var(--font-ui);
+  display: flex; flex-direction: column;
+  padding-inline: 16px; padding-block: 12px; box-sizing: border-box; gap: 10px;
+}
+[hidden] { display: none !important; }
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.panel {
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px 16px; padding: 12px;
+}
+.panel h1 { font-size: 18px; margin: 0; font-weight: 700; letter-spacing: .04em; text-wrap: balance; }
+.panel h1 small { font-size: 12px; font-weight: 400; color: var(--muted); margin-left: 6px; letter-spacing: 0; }
+#btnExport { grid-column: 3; grid-row: 1; }
+.sheet { display: contents; }
+.sheet-head, .m-only { display: none; }
+.opts { grid-column: 2; grid-row: 1; justify-self: end; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+.tabs, .items-head, .items, .groups { grid-column: 1 / -1; min-width: 0; }
+.lv-group { display: inline-flex; gap: 10px; padding: 3px 10px; border: 1px solid var(--line); border-radius: 6px; }
+.opt { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; user-select: none; cursor: pointer; }
+.opt input { accent-color: var(--accent); width: 16px; height: 16px; margin: 0; }
+.btn {
+  border: 1px solid var(--line); background: var(--panel); border-radius: 6px;
+  padding: 5px 12px; font-size: 13px;
+}
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); font-weight: 700; }
+.btn.small { padding: 2px 9px; font-size: 12px; }
+
+.tabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: thin; }
+.tab {
+  flex: none; display: inline-flex; align-items: center; gap: 6px;
+  border: 1px solid var(--line); background: transparent; border-radius: 999px;
+  padding: 4px 11px 4px 9px; font-size: 13px; white-space: nowrap;
+}
+.tab .sw { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+.tab .cnt { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.tab.has .cnt { color: var(--accent); font-weight: 700; }
+.tab[aria-selected="true"] { background: var(--accent-soft); border-color: var(--accent); font-weight: 700; }
+
+.items-head { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+.items { display: flex; flex-wrap: wrap; gap: 6px; max-height: 108px; overflow-y: auto; }
+.chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  border: 1px solid var(--line); border-radius: 6px; padding: 3px 9px 3px 7px; font-size: 13px;
+  background: transparent; user-select: none;
+}
+.chip .box { width: 12px; height: 12px; border-radius: 3px; border: 1.5px solid var(--muted); flex: none; box-sizing: border-box; }
+.chip[aria-pressed="true"] { border-color: var(--c); background: color-mix(in srgb, var(--c) 14%, transparent); }
+.chip[aria-pressed="true"] .box { background: var(--c); border-color: var(--c); }
+
+.groups { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 13px; border-top: 1px dashed var(--line); padding-top: 10px; }
+.groups .label { color: var(--muted); font-size: 12px; margin-right: 2px; }
+.group { display: inline-flex; align-items: stretch; border: 1px solid var(--accent); border-radius: 6px; overflow: hidden; }
+.group button { border: 0; background: transparent; padding: 3px 9px; font-size: 13px; }
+.group .apply:hover { background: var(--accent-soft); }
+.group .del { border-left: 1px solid var(--line); color: var(--muted); padding: 3px 7px; }
+.group .del:hover { color: var(--danger); }
+.groups .empty { color: var(--muted); font-size: 12px; }
+.groups form { display: inline-flex; gap: 6px; margin-left: auto; }
+.groups input[type="text"] {
+  border: 1px solid var(--line); border-radius: 6px; padding: 3px 8px; font-size: 13px;
+  background: var(--bg); width: 11em; min-width: 0;
+}
+
+.map-wrap {
+  flex: 1; min-height: 360px; position: relative;
+  border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: #d4e6ef;
+}
+#map { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
+#map:active { cursor: grabbing; }
+.zoom { position: absolute; right: 10px; top: 10px; display: flex; flex-direction: column; gap: 4px; }
+.zoom button {
+  width: 32px; height: 32px; border-radius: 6px; border: 1px solid var(--line);
+  background: var(--panel); font-size: 16px; line-height: 1; padding: 0;
+}
+.zoom button.fit { font-size: 11px; }
+.hint { position: absolute; left: 10px; top: 10px; max-width: calc(100% - 70px); font-size: 11px; color: #33443a; background: rgba(255,255,255,.85); padding: 3px 8px; border-radius: 4px; pointer-events: none; }
+.note { position: absolute; left: 10px; bottom: 8px; max-width: calc(100% - 20px); font-size: 11px; color: #44564c; background: rgba(255,255,255,.7); padding: 2px 6px; border-radius: 4px; pointer-events: none; }
+
+.toast {
+  position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
+  background: var(--fg); color: var(--bg); padding: 8px 14px; border-radius: 6px; font-size: 13px; z-index: 20;
+}
+.modal { position: fixed; inset: 0; background: rgba(10,16,12,.6); display: grid; place-items: center; z-index: 10; padding: 16px; }
+.modal .box {
+  background: var(--panel); border-radius: var(--radius); padding: 14px; max-width: min(960px, 100%);
+  max-height: 100%; display: flex; flex-direction: column; gap: 10px; box-sizing: border-box;
+}
+.modal img { max-width: 100%; max-height: 70vh; object-fit: contain; border: 1px solid var(--line); }
+.modal p { margin: 0; font-size: 13px; color: var(--muted); }
+
+@media (max-width: 640px) {
+  body { padding-block: 8px; gap: 8px; }
+  .panel { grid-template-columns: 1fr auto auto; gap: 8px; padding: 8px 10px; }
+  .panel h1 { font-size: 16px; }
+  .panel h1 small { display: none; }
+  .m-only { display: inline-flex; }
+  #btnSheet { grid-column: 2; grid-row: 1; align-items: center; gap: 6px; }
+  #btnSheet b { background: var(--accent); color: var(--on-accent); border-radius: 999px; padding: 0 7px; font-size: 12px; font-variant-numeric: tabular-nums; }
+  #btnExport { padding-inline: 10px; }
+  .btn { padding: 7px 12px; }
+  .btn.small { padding: 5px 11px; font-size: 13px; }
+  /* 底部抽屜 */
+  .sheet {
+    display: flex; flex-direction: column; gap: 12px;
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 15;
+    max-height: 70%; overflow-y: auto; overscroll-behavior: contain;
+    background: var(--panel); border-top: 1px solid var(--line); border-radius: 14px 14px 0 0;
+    box-shadow: 0 -6px 24px rgba(0,0,0,.18);
+    padding: 0 16px calc(16px + env(safe-area-inset-bottom, 0px));
+    transform: translateY(105%); visibility: hidden; transition: transform .22s ease, visibility 0s .22s;
+  }
+  .sheet.open { transform: none; visibility: visible; transition: transform .22s ease; }
+  .sheet-head {
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 1; background: var(--panel); padding: 12px 0 8px; font-weight: 700;
+  }
+  .opts { justify-self: stretch; gap: 10px 14px; font-size: 14px; }
+  .opts .opt { font-size: 14px; }
+  .tabs { padding-bottom: 4px; }
+  .tab { padding: 6px 12px 6px 10px; font-size: 14px; }
+  .items { max-height: none; overflow: visible; gap: 8px; }
+  .chip { padding: 7px 11px 7px 9px; font-size: 14px; }
+  .groups form { margin-left: 0; width: 100%; }
+  .groups input[type="text"] { flex: 1; padding: 6px 10px; font-size: 14px; }
+  .map-wrap { min-height: 0; }
+  .zoom button { width: 38px; height: 38px; }
+  .note { font-size: 10px; }
+}
+@media (prefers-reduced-motion: reduce) { .sheet, .sheet.open { transition: none; } }
+</style>
+
+<div class="panel" id="panel">
+  <h1>日本地形地圖<small>勾選地形，點地名可聽讀音</small></h1>
+  <button class="btn m-only" id="btnSheet" type="button" aria-expanded="false" aria-controls="sheet">選擇地形 <b id="selCount">0</b></button>
+  <button class="btn primary" id="btnExport" type="button">輸出圖片</button>
+  <div class="sheet" id="sheet">
+  <div class="sheet-head"><span>選擇地形</span><button class="btn primary" id="btnSheetClose" type="button">完成</button></div>
+  <div class="opts">
+    <span class="lv-group" role="group" aria-label="顯示範圍">
+      <label class="opt"><input type="checkbox" id="lvPri" checked> 優先</label>
+      <label class="opt"><input type="checkbox" id="lvExt" checked> 擴充</label>
+    </span>
+    <label class="opt"><input type="checkbox" id="optNames" checked> 顯示名稱</label>
+    <label class="opt"><input type="checkbox" id="optKana" checked> 振假名</label>
+    <label class="opt"><input type="checkbox" id="optPref" checked> 縣界</label>
+    <button class="btn" id="btnClear" type="button">全部清除</button>
+  </div>
+  <div class="tabs" id="tabs" role="tablist" aria-label="地形分類"></div>
+  <div class="items-head">
+    <span id="catTitle"></span>
+    <button class="btn small" id="btnAll" type="button">本類全選</button>
+    <button class="btn small" id="btnNone" type="button">本類取消</button>
+  </div>
+  <div class="items" id="items"></div>
+  <div class="groups" id="groups">
+    <span class="label">群組</span>
+    <span id="groupList"></span>
+    <form id="groupForm">
+      <input type="text" id="groupName" placeholder="群組名稱" maxlength="30" aria-label="群組名稱">
+      <button class="btn small" type="submit">儲存目前勾選</button>
+    </form>
+  </div>
+  </div>
+</div>
+
+<div class="map-wrap" id="mapWrap">
+  <svg id="map" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="日本地形地圖"></svg>
+  <div class="zoom">
+    <button type="button" id="zIn" aria-label="放大">+</button>
+    <button type="button" id="zOut" aria-label="縮小">−</button>
+    <button type="button" id="zFit" class="fit" aria-label="顯示本土四島">本土</button>
+    <button type="button" id="zAll" class="fit" aria-label="顯示含沖繩的全域">全域</button>
+  </div>
+  <div class="note">範圍與位置為學習用概略圖</div>
+  <div class="hint" id="dcHint" hidden>部分地名重疊已隱藏，放大即可顯示</div>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+<div class="modal" id="modal" hidden>
+  <div class="box">
+    <p>在圖片上按右鍵（手機長按）即可另存。</p>
+    <img id="modalImg" alt="輸出的地圖圖片">
+    <div><button class="btn" type="button" id="modalClose">關閉</button></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+<script>
+const TOPO = /*__TOPO__*/null;
+const NE = /*__NE__*/null;
+/*__TERRAIN__*/
+
+// 地圖本身固定配色（輸出圖片時也一樣）
+const MAP_STYLE = `
+.sea{fill:#d4e6ef}
+.land{fill:#f3f1e6}
+.pref{fill:none;stroke:#8e9b91;stroke-width:.7;stroke-dasharray:3 2}
+.coast{fill:none;stroke:#62756a;stroke-width:.9}
+.river{fill:none;stroke-linecap:round;stroke-linejoin:round;stroke-width:2.2}
+.lbl text{font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Yu Gothic","YuGothic","Meiryo","Noto Sans JP",sans-serif;font-weight:700;paint-order:stroke;stroke:#fff;stroke-linejoin:round}
+.lbl .rb{font-weight:500}
+.lbl{cursor:pointer}
+.nonames .lbl{visibility:hidden}
+.dc > .lbl{visibility:hidden}
+.nokana .lbl .rb{visibility:hidden}
+.noprefs .pref{display:none}
+.lbl.speaking text{stroke:#ffe27a}
+.credit{font-family:"Hiragino Sans","Yu Gothic","Meiryo","Noto Sans JP",sans-serif;font-size:10px;fill:#5a6b62;paint-order:stroke;stroke:#fff;stroke-width:3;stroke-linejoin:round}
+`;
+
+const LS = {
+  get(k, d) { try { const v = localStorage.getItem("jpterrain:" + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem("jpterrain:" + k, JSON.stringify(v)); } catch {} },
+};
+const cap = (name) => (window.claude && window.claude.use ? window.claude.use(name).catch(() => null) : Promise.resolve(null));
+
+// ---------- 資料整理 ----------
+const ITEM = new Map();
+for (const cat of CATS) cat.items.forEach((it) => { it.id = cat.id + ":" + it.n; it.cat = cat; ITEM.set(it.id, it); });
+
+function rubySegs(it) {
+  if (it.r) {
+    const segs = []; const re = /\[([^|\]]+)\|([^\]]*)\]|([^\[]+)/g; let m;
+    while ((m = re.exec(it.r))) segs.push(m[3] !== undefined ? { b: m[3], r: "" } : { b: m[1], r: m[2] });
+    return segs;
+  }
+  return [{ b: it.n, r: it.k || "" }];
+}
+function fixRing(geom) { if (d3.geoArea(geom) > 2 * Math.PI) geom.coordinates.forEach((r) => r.reverse()); return geom; }
+function geomOf(it) {
+  if (it.ne) { const g = NE[it.ne]; return g.type.includes("Polygon") ? fixRing(JSON.parse(JSON.stringify(g))) : g; }
+  if (it.p) return fixRing({ type: "Polygon", coordinates: [[...it.p, it.p[0]]] });
+  if (it.s) return { type: "LineString", coordinates: it.s };
+  if (it.rad) return d3.geoCircle().center(it.c).radius(it.rad / 111.32).precision(10)();
+  return null;
+}
+function labelPoint(it, geom) {
+  if (it.l) return it.l;
+  if (it.c) return it.c;
+  if (it.s) return it.s[Math.floor(it.s.length / 2)];
+  return d3.geoCentroid(geom);
+}
+
+// ---------- 狀態 ----------
+const DEFAULT_SEL = [...CATS[0].items, ...CATS[3].items, ...CATS[6].items].filter((i) => i.lv === 1).map((i) => i.id);
+const state = {
+  sel: new Set((LS.get("sel", null) || DEFAULT_SEL).filter((id) => ITEM.has(id))),
+  cat: LS.get("cat", CATS[0].id),
+  names: LS.get("names", true),
+  kana: LS.get("kana", true),
+  pref: LS.get("pref", true),
+  lv1: LS.get("lv1", true),
+  lv2: LS.get("lv2", true),
+};
+if (!CATS.some((c) => c.id === state.cat)) state.cat = CATS[0].id;
+let groups = LS.get("groups", []);
+const persist = () => { LS.set("sel", [...state.sel]); LS.set("cat", state.cat); LS.set("names", state.names); LS.set("kana", state.kana); LS.set("pref", state.pref); LS.set("lv1", state.lv1); LS.set("lv2", state.lv2); };
+// 只勾「優先」或「擴充」其中一個時，只顯示並操作該等級的地形
+const shown = (it) => (it.lv === 1 ? state.lv1 : state.lv2);
+const shownItems = (cat) => cat.items.filter(shown);
+
+// ---------- 地圖 ----------
+const svg = d3.select("#map");
+const wrap = document.getElementById("mapWrap");
+const land = topojson.merge(TOPO, TOPO.objects.japan.geometries);
+const prefMesh = topojson.mesh(TOPO, TOPO.objects.japan, (a, b) => a !== b);
+const coastMesh = topojson.mesh(TOPO, TOPO.objects.japan, (a, b) => a === b);
+const FIT = { type: "LineString", coordinates: [[129.6, 31.0], [145.9, 45.55]] };
+const FIT_ALL = [[122.8, 24.0], [148.2, 46.0]];
+let W = 0, H = 0, projection, path, zoomG, labelG, transform = d3.zoomIdentity, labels = [], currents = [];
+const curve = d3.line().curve(d3.curveCatmullRom.alpha(0.5));
+const zoom = d3.zoom().scaleExtent([0.3, 14]).on("zoom", (e) => {
+  transform = e.transform;
+  zoomG.attr("transform", transform);
+  placeLabels();
+}).on("end", () => declutter());
+
+// 手機等小地圖：重疊的地名先隱藏（優先項目先保留），放大後自動顯示
+function declutter() {
+  const small = W < 640;
+  const kept = [];
+  let hidden = 0;
+  const order = labels.map((l, i) => i).sort((a, b) => labels[a].lv - labels[b].lv || a - b);
+  for (const i of order) {
+    const l = labels[i];
+    let hide = false;
+    if (small && state.names) {
+      const x = transform.applyX(l.p[0]) + l.bb.x, y = transform.applyY(l.p[1]) + l.bb.y;
+      const r = { x0: x, y0: y, x1: x + l.bb.w, y1: y + l.bb.h };
+      hide = kept.some((k) => r.x0 < k.x1 && r.x1 > k.x0 && r.y0 < k.y1 && r.y1 > k.y0);
+      if (!hide) kept.push(r);
+    }
+    l.g.classed("dc", hide);
+    if (hide) hidden++;
+  }
+  $("dcHint").hidden = !hidden;
+}
+
+function buildBase() {
+  W = wrap.clientWidth; H = wrap.clientHeight;
+  projection = d3.geoMercator().fitExtent([[24, 24], [W - 24, H - 24]], FIT);
+  path = d3.geoPath(projection);
+  svg.selectAll("*").remove();
+  svg.attr("viewBox", `0 0 ${W} ${H}`).attr("width", W).attr("height", H);
+  svg.append("style").text(MAP_STYLE);
+  const defs = svg.append("defs");
+  defs.append("clipPath").attr("id", "landClip").append("path").attr("d", path(land));
+  for (const [id, col] of [["arrWarm", "#d9472f"], ["arrCold", "#3567c9"]]) {
+    defs.append("marker").attr("id", id).attr("viewBox", "0 0 10 10").attr("refX", 5).attr("refY", 5)
+      .attr("markerWidth", 3.2).attr("markerHeight", 3.2).attr("orient", "auto-start-reverse")
+      .append("path").attr("d", "M0,0L10,5L0,10z").attr("fill", col);
+  }
+  svg.append("rect").attr("class", "sea").attr("width", W).attr("height", H);
+  zoomG = svg.append("g");
+  zoomG.append("path").attr("class", "land").attr("d", path(land));
+  zoomG.append("g").attr("id", "areas").attr("clip-path", "url(#landClip)");
+  zoomG.append("g").attr("id", "bands").attr("clip-path", "url(#landClip)");
+  zoomG.append("path").attr("class", "pref").attr("d", path(prefMesh)).attr("vector-effect", "non-scaling-stroke");
+  zoomG.append("path").attr("class", "coast").attr("d", path(coastMesh)).attr("vector-effect", "non-scaling-stroke");
+  zoomG.append("g").attr("id", "lines");
+  zoomG.append("g").attr("id", "lakes");
+  labelG = svg.append("g").attr("id", "labels");
+  svg.append("text").attr("class", "credit").attr("x", W - 8).attr("y", H - 8).attr("text-anchor", "end")
+    .text("縣界出典：地球地圖日本（國土地理院）");
+  svg.call(zoom).on("dblclick.zoom", null);
+  svg.call(zoom.transform, transform);
+}
+
+function pxPerKm(lonlat) {
+  const a = projection(lonlat), b = projection([lonlat[0], lonlat[1] + 1]);
+  return Math.hypot(b[0] - a[0], b[1] - a[1]) / 111.32;
+}
+
+function drawFeatures() {
+  if (!zoomG) return;
+  const areas = zoomG.select("#areas"), bands = zoomG.select("#bands"), lines = zoomG.select("#lines"), lakes = zoomG.select("#lakes");
+  [areas, bands, lines, lakes].forEach((g) => g.selectAll("*").remove());
+  labelG.selectAll("*").remove();
+  labels = []; currents = [];
+  for (const cat of CATS) {
+    for (const it of cat.items) {
+      if (!state.sel.has(it.id) || !shown(it)) continue;
+      const geom = geomOf(it);
+      const k = cat.kind;
+      if (k === "area") {
+        areas.append("path").attr("d", path(geom)).attr("fill", cat.color).attr("fill-opacity", .5)
+          .attr("stroke", cat.color).attr("stroke-width", 1).attr("vector-effect", "non-scaling-stroke");
+      } else if (k === "band") {
+        const mid = it.s[Math.floor(it.s.length / 2)];
+        bands.append("path").attr("d", path(geom)).attr("fill", "none").attr("stroke", cat.color)
+          .attr("stroke-opacity", .55).attr("stroke-width", it.w * pxPerKm(mid))
+          .attr("stroke-linecap", "round").attr("stroke-linejoin", "round");
+      } else if (k === "river") {
+        lines.append("path").attr("class", "river").attr("d", path(geom)).attr("stroke", cat.color).attr("vector-effect", "non-scaling-stroke");
+      } else if (k === "current") {
+        const col = it.warm ? "#d9472f" : "#3567c9";
+        const cp = labelG.append("path").attr("fill", "none").attr("stroke", col).attr("stroke-opacity", .75)
+          .attr("stroke-width", 4).attr("stroke-linecap", "round")
+          .attr("marker-end", `url(#${it.warm ? "arrWarm" : "arrCold"})`);
+        currents.push({ el: cp, pts: it.s.map((c) => projection(c)) });
+      } else if (k === "trench") {
+        lines.append("path").attr("d", path(geom)).attr("fill", "none").attr("stroke", cat.color).attr("stroke-width", 2.4)
+          .attr("stroke-dasharray", "10 4").attr("stroke-linecap", "round").attr("vector-effect", "non-scaling-stroke");
+      } else if (k === "fault" && it.p) {
+        areas.append("path").attr("d", path(geom)).attr("fill", cat.color).attr("fill-opacity", .16)
+          .attr("stroke", cat.color).attr("stroke-width", 1.2).attr("stroke-dasharray", "3 3").attr("vector-effect", "non-scaling-stroke");
+      } else if (k === "fault") {
+        lines.append("path").attr("d", path(geom)).attr("fill", "none").attr("stroke", cat.color).attr("stroke-width", 2.6)
+          .attr("stroke-dasharray", "7 3").attr("stroke-linecap", "round").attr("vector-effect", "non-scaling-stroke");
+      } else if (k === "lake") {
+        lakes.append("path").attr("d", path(geom)).attr("fill", cat.color).attr("stroke", "#2f7ab3")
+          .attr("stroke-width", .8).attr("vector-effect", "non-scaling-stroke");
+      }
+      addLabel(it, cat, labelPoint(it, geom));
+    }
+  }
+  placeLabels();
+  declutter();
+}
+
+function addLabel(it, cat, lonlat) {
+  const p = projection(lonlat);
+  const g = labelG.append("g");
+  const k = cat.kind;
+  let align = "middle", dx = 0, size = 12, color = "#2a332e";
+  if (k === "volcano" || k === "peak") {
+    g.append("path").attr("d", "M0,-6L5.5,4H-5.5Z").attr("fill", cat.color).attr("stroke", "#fff").attr("stroke-width", 1);
+    align = "start"; dx = 8; size = 11.5; color = cat.color;
+  } else if (k === "dot") {
+    g.append("circle").attr("r", 3).attr("fill", cat.color).attr("stroke", "#fff").attr("stroke-width", 1);
+    align = "start"; dx = 6; size = 11.5; color = cat.color;
+  } else if (k === "band") { color = "#6b4320"; size = 12.5; }
+  else if (k === "area") { color = d3.color(cat.color).darker(1.6).formatHex(); size = 12; }
+  else if (k === "river") { color = "#1c5a99"; size = 11.5; }
+  else if (k === "lake") { color = "#1c5a99"; size = 11; align = "start"; dx = 8; }
+  else if (k === "text") { color = cat.color; size = 12; }
+  else if (k === "water") { color = cat.color; size = it.big ? 17 : 11.5; }
+  else if (k === "current") { color = it.warm ? "#b8341f" : "#2b55aa"; size = 12; }
+  else if (k === "trench" || k === "fault") { color = cat.color; size = 11.5; }
+
+  const lg = g.append("g").attr("class", "lbl").attr("fill", color);
+  lg.append("title").text(`${it.n}（${readingOf(it)}）`);
+  const segs = rubySegs(it);
+  let x = 0;
+  for (const s of segs) {
+    const bt = lg.append("text").attr("font-size", size).attr("stroke-width", 3).text(s.b);
+    const bw = bt.node().getComputedTextLength();
+    let rt = null, rw = 0;
+    if (s.r) {
+      rt = lg.append("text").attr("class", "rb").attr("font-size", size * 0.55).attr("stroke-width", 2.4).text(s.r);
+      rw = rt.node().getComputedTextLength();
+    }
+    const w = Math.max(bw, rw);
+    bt.attr("x", x + w / 2).attr("text-anchor", "middle");
+    if (rt) rt.attr("x", x + w / 2).attr("y", -size * 0.98).attr("text-anchor", "middle");
+    x += w;
+  }
+  const hasRuby = segs.some((s) => s.r);
+  const ox = align === "start" ? dx : -x / 2;
+  const oy = size * 0.36 + (align === "middle" && hasRuby ? size * 0.25 : 0);
+  // 點擊範圍（透明），讓整個名稱都容易點到
+  lg.insert("rect", "text").attr("x", -2).attr("y", -size * (hasRuby ? 1.6 : 1)).attr("width", x + 4)
+    .attr("height", size * (hasRuby ? 1.95 : 1.35)).attr("fill", "transparent").attr("stroke", "none");
+  lg.attr("transform", `translate(${ox},${oy})`);
+  lg.on("click", (e) => { e.stopPropagation(); speak(it, lg); });
+  const bb = lg.node().getBBox();
+  labels.push({ g, p, lv: it.lv, bb: { x: bb.x + ox, y: bb.y + oy, w: bb.width, h: bb.height } });
+}
+
+function placeLabels() {
+  for (const c of currents) c.el.attr("d", curve(c.pts.map((p) => transform.apply(p))));
+  for (const l of labels) l.g.attr("transform", `translate(${transform.applyX(l.p[0])},${transform.applyY(l.p[1])})`);
+}
+function applyOptions() {
+  const el = svg.node();
+  el.classList.toggle("nonames", !state.names);
+  declutter();
+  el.classList.toggle("nokana", !state.kana);
+  el.classList.toggle("noprefs", !state.pref);
+}
+
+// ---------- 語音 ----------
+function readingOf(it) { return it.k || rubySegs(it).map((s) => s.r || s.b).join(""); }
+let jaVoice = null;
+function pickVoice() {
+  const vs = speechSynthesis.getVoices().filter((v) => /^ja/i.test(v.lang));
+  jaVoice = vs.find((v) => /Google|Nanami|Haruka|Kyoko|O-ren/i.test(v.name)) || vs[0] || null;
+}
+if ("speechSynthesis" in window) { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
+function speak(it, lg) {
+  if (!("speechSynthesis" in window)) { toast("這個瀏覽器不支援語音朗讀"); return; }
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(readingOf(it).replace(/、/g, "。"));
+  u.lang = "ja-JP"; u.rate = 0.9;
+  if (jaVoice) u.voice = jaVoice;
+  labelG.selectAll(".lbl").classed("speaking", false);
+  lg.classed("speaking", true);
+  u.onend = u.onerror = () => lg.classed("speaking", false);
+  speechSynthesis.speak(u);
+  if (!jaVoice && speechSynthesis.getVoices().length) toast("找不到日語語音，請在系統安裝日語語音");
+}
+
+// ---------- 操作面板 ----------
+const $ = (id) => document.getElementById(id);
+function renderTabs() {
+  updateCount();
+  const tabs = $("tabs"); tabs.textContent = "";
+  if (!shownItems(CATS.find((c) => c.id === state.cat)).length) state.cat = CATS.find((c) => shownItems(c).length).id;
+  for (const cat of CATS) {
+    const vis = shownItems(cat);
+    if (!vis.length) continue;
+    const n = vis.filter((i) => state.sel.has(i.id)).length;
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "tab" + (n ? " has" : ""); b.id = "tab-" + cat.id;
+    b.setAttribute("role", "tab"); b.setAttribute("aria-selected", String(cat.id === state.cat));
+    b.innerHTML = `<span class="sw"></span><span></span><span class="cnt">${n}/${vis.length}</span>`;
+    b.querySelector(".sw").style.background = cat.color;
+    b.children[1].textContent = cat.label;
+    b.onclick = () => { state.cat = cat.id; persist(); renderTabs(); renderItems(); };
+    tabs.appendChild(b);
+  }
+}
+function renderItems() {
+  const cat = CATS.find((c) => c.id === state.cat);
+  const vis = shownItems(cat);
+  $("catTitle").textContent = `${cat.label}（${vis.length}）`;
+  const box = $("items"); box.textContent = "";
+  for (const it of vis) {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "chip"; b.style.setProperty("--c", cat.color);
+    b.setAttribute("aria-pressed", String(state.sel.has(it.id)));
+    b.title = readingOf(it);
+    b.innerHTML = `<span class="box"></span><span></span>`;
+    b.children[1].textContent = it.n;
+    b.onclick = () => { state.sel.has(it.id) ? state.sel.delete(it.id) : state.sel.add(it.id); changed(); };
+    box.appendChild(b);
+  }
+}
+function updateCount() { $("selCount").textContent = [...state.sel].filter((id) => shown(ITEM.get(id))).length; }
+function setSheet(open) { $("sheet").classList.toggle("open", open); $("btnSheet").setAttribute("aria-expanded", String(open)); }
+$("btnSheet").onclick = () => setSheet(!$("sheet").classList.contains("open"));
+$("btnSheetClose").onclick = () => setSheet(false);
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") setSheet(false); });
+function changed() { persist(); renderTabs(); renderItems(); drawFeatures(); }
+
+$("btnAll").onclick = () => { shownItems(CATS.find((c) => c.id === state.cat)).forEach((i) => state.sel.add(i.id)); changed(); };
+$("btnNone").onclick = () => { shownItems(CATS.find((c) => c.id === state.cat)).forEach((i) => state.sel.delete(i.id)); changed(); };
+$("btnClear").onclick = () => { state.sel.clear(); changed(); };
+for (const [id, key] of [["optNames", "names"], ["optKana", "kana"], ["optPref", "pref"]]) {
+  $(id).checked = state[key];
+  $(id).onchange = (e) => { state[key] = e.target.checked; persist(); applyOptions(); };
+}
+for (const [id, key, other] of [["lvPri", "lv1", "lv2"], ["lvExt", "lv2", "lv1"]]) {
+  $(id).checked = state[key];
+  $(id).onchange = (e) => {
+    if (!e.target.checked && !state[other]) { e.target.checked = true; toast("「優先」和「擴充」至少要勾一個"); return; }
+    state[key] = e.target.checked; changed();
+  };
+}
+
+// ---------- 群組（登入時存在帳號，否則存在此瀏覽器） ----------
+let groupDoc = null;
+function renderGroups() {
+  const list = $("groupList"); list.textContent = "";
+  if (!groups.length) { const s = document.createElement("span"); s.className = "empty"; s.textContent = "尚無群組，勾選後輸入名稱即可儲存"; list.appendChild(s); }
+  list.style.display = "contents";
+  groups.forEach((gr, i) => {
+    const wrapEl = document.createElement("span"); wrapEl.className = "group";
+    const a = document.createElement("button"); a.type = "button"; a.className = "apply";
+    a.textContent = `${gr.name}（${gr.ids.length}）`; a.title = "套用這個群組";
+    a.onclick = () => { state.sel = new Set(gr.ids.filter((id) => ITEM.has(id))); changed(); toast(`已套用「${gr.name}」`); };
+    const d = document.createElement("button"); d.type = "button"; d.className = "del"; d.textContent = "×";
+    d.setAttribute("aria-label", `刪除群組 ${gr.name}`);
+    d.onclick = () => { groups.splice(i, 1); saveGroups(); };
+    wrapEl.append(a, d); list.appendChild(wrapEl);
+  });
+}
+async function saveGroups() {
+  LS.set("groups", groups); renderGroups();
+  if (groupDoc) { try { await groupDoc.set({ list: groups }); } catch { toast("群組只儲存在這個瀏覽器"); } }
+}
+$("groupForm").onsubmit = (e) => {
+  e.preventDefault();
+  const name = $("groupName").value.trim();
+  if (!name) { toast("請輸入群組名稱"); $("groupName").focus(); return; }
+  if (!state.sel.size) { toast("請先勾選地形"); return; }
+  const ex = groups.find((g) => g.name === name);
+  if (ex) ex.ids = [...state.sel]; else groups.push({ name, ids: [...state.sel] });
+  $("groupName").value = "";
+  saveGroups(); toast(ex ? `已更新「${name}」` : `已儲存「${name}」`);
+};
+(async () => {
+  const [db, user] = await Promise.all([cap("db"), cap("user")]);
+  if (!db || !user) return;
+  const uid = await user.id();
+  if (!uid) return;
+  groupDoc = db.doc("data/users/" + uid + "/groups");
+  groupDoc.onSnapshot((s) => {
+    if (s.exists) { groups = JSON.parse(JSON.stringify(s.data().list || [])); LS.set("groups", groups); renderGroups(); }
+    else if (groups.length) saveGroups();
+  }, () => { groupDoc = null; });
+})();
+
+// ---------- 輸出圖片 ----------
+const downloadsP = cap("downloads");
+async function exportPNG() {
+  const btn = $("btnExport"); btn.disabled = true;
+  try {
+    const clone = svg.node().cloneNode(true);
+    clone.querySelectorAll("title").forEach((t) => t.remove());
+    clone.querySelectorAll(".speaking").forEach((t) => t.classList.remove("speaking"));
+    clone.setAttribute("width", W); clone.setAttribute("height", H);
+    const xml = new XMLSerializer().serializeToString(clone);
+    const img = new Image();
+    img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(xml);
+    await img.decode();
+    const scale = 2, cv = document.createElement("canvas");
+    cv.width = W * scale; cv.height = H * scale;
+    const ctx = cv.getContext("2d"); ctx.scale(scale, scale); ctx.drawImage(img, 0, 0, W, H);
+    const blob = await new Promise((r) => cv.toBlob(r, "image/png"));
+    const d = new Date(), pad = (n) => String(n).padStart(2, "0");
+    const filename = `日本地形_${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}.png`;
+    if (!window.claude) {
+      // 一般網站（例如 GitHub Pages）：直接下載
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob); a.download = filename;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+      toast("圖片已下載"); return;
+    }
+    const dl = await downloadsP;
+    if (dl) {
+      try { await dl.save({ filename, data: blob }); toast("圖片已儲存"); return; }
+      catch (e) { if (e && (e.code === "declined" || e.code === "rate_limited")) return; }
+    }
+    const url = URL.createObjectURL(blob);
+    $("modalImg").src = url; $("modal").hidden = false;
+  } catch (err) {
+    toast("輸出失敗：" + (err && err.message ? err.message : err));
+  } finally { btn.disabled = false; }
+}
+$("btnExport").onclick = exportPNG;
+$("modalClose").onclick = () => { $("modal").hidden = true; URL.revokeObjectURL($("modalImg").src); };
+
+// ---------- 縮放 ----------
+$("zIn").onclick = () => svg.transition().duration(250).call(zoom.scaleBy, 1.6);
+$("zOut").onclick = () => svg.transition().duration(250).call(zoom.scaleBy, 1 / 1.6);
+$("zFit").onclick = () => svg.transition().duration(300).call(zoom.transform, d3.zoomIdentity);
+$("zAll").onclick = () => {
+  const a = projection(FIT_ALL[0]), b = projection(FIT_ALL[1]);
+  const x0 = Math.min(a[0], b[0]), x1 = Math.max(a[0], b[0]), y0 = Math.min(a[1], b[1]), y1 = Math.max(a[1], b[1]);
+  const k = Math.min((W - 40) / (x1 - x0), (H - 40) / (y1 - y0));
+  const t = d3.zoomIdentity.translate(W / 2 - k * (x0 + x1) / 2, H / 2 - k * (y0 + y1) / 2).scale(k);
+  svg.transition().duration(300).call(zoom.transform, t);
+};
+
+let toastTimer;
+function toast(msg) { const t = $("toast"); t.textContent = msg; t.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => (t.hidden = true), 2200); }
+
+function fullRender() { buildBase(); applyOptions(); drawFeatures(); }
+let lastSize = "";
+new ResizeObserver(() => {
+  const s = wrap.clientWidth + "x" + wrap.clientHeight;
+  if (s === lastSize || !wrap.clientWidth || !wrap.clientHeight) return;
+  lastSize = s; transform = d3.zoomIdentity; fullRender();
+}).observe(wrap);
+
+renderTabs(); renderItems(); renderGroups();
+document.fonts && document.fonts.ready.then(() => { if (lastSize) drawFeatures(); });
+</script>
