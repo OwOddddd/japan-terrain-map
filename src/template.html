@@ -292,7 +292,10 @@ body.quiz #btnSheet, body.quiz #btnExport { pointer-events: none; opacity: .45; 
     <span class="seg" role="group" data-t-aria="detailLabel">
       <button type="button" id="mSimple" data-t="simple"></button><button type="button" id="mDetail" data-t="detail"></button>
     </span>
-    <label class="opt" id="reliefOpt"><input type="checkbox" id="optRelief"> <span data-t="relief"></span></label>
+    <span class="lv-group" id="reliefOpt" role="group" data-t-aria="relief">
+      <label class="opt"><input type="checkbox" id="optRelief"> <span data-t="reliefColor"></span></label>
+      <label class="opt"><input type="checkbox" id="optReliefGray"> <span data-t="reliefGray"></span></label>
+    </span>
     <label class="opt slider" id="opacityOpt" hidden><span data-t="opacity"></span>
       <input type="range" id="opacity" min="0" max="100" step="5"> <b id="opacityVal"></b></label>
     <span class="lv-group" role="group" data-t-aria="levels">
@@ -357,6 +360,9 @@ body.quiz #btnSheet, body.quiz #btnExport { pointer-events: none; opacity: .45; 
 <div class="modal" id="printDlg" hidden>
   <div class="box print-box" role="dialog" aria-labelledby="printTitle">
     <h2 id="printTitle" data-t="printTitle"></h2>
+    <div class="prow"><span data-t="printColor"></span>
+      <span class="seg"><button type="button" id="pInk" data-t="inkOn"></button><button type="button" id="pColor" data-t="inkOff"></button></span>
+    </div>
     <div class="prow"><span data-t="printPaper"></span>
       <span class="seg"><button type="button" id="pPortrait" data-t="a4p"></button><button type="button" id="pLandscape" data-t="a4l"></button><button type="button" id="pScreen" data-t="pScreen"></button></span>
     </div>
@@ -397,6 +403,11 @@ const RELIEF = /*__RELIEF__*/null;
 // 地圖本身固定配色（輸出圖片時也一樣）
 const MAP_STYLE = `
 .sea{fill:#d4e6ef}
+.ink .sea{fill:#fff}
+.ink .land{fill:#f2f2f2}
+.ink .coast{stroke:#333}
+.ink .pref{stroke:#a0a0a0}
+.onrelief #areas path,.onrelief #lakes path{stroke-width:2.2px;stroke-opacity:1}
 .land{fill:#f3f1e6}
 .pref{fill:none;stroke:#8e9b91;stroke-width:.7;stroke-dasharray:3 2}
 .coast{fill:none;stroke:#62756a;stroke-width:.9}
@@ -424,6 +435,7 @@ const MAP_STYLE = `
 
 const I18N = {
   ja: {
+    reliefColor: "起伏図（カラー）", reliefGray: "起伏図（グレー）", fossa: "フォッサマグナ",
     simple: "簡易", detail: "詳細", relief: "起伏図", opacity: "地形の不透明度", detailLabel: "範囲の表し方",
     prefsTitle: "都道府県（選ぶと、その都道府県に一部でもかかる地形をすべて選択）",
     prefAdded: (n, c) => `「${n}」の地形 ${c} 件を選択しました`, prefRemoved: (n) => `「${n}」の選択を解除しました`,
@@ -450,11 +462,13 @@ const I18N = {
     needOne: "地形を1つ以上選んでください", reliefNo: "起伏表示ではテスト・白地図は使えません。「簡易」か「詳細」に切り替えてください",
     answerKey: "解答", blankSaved: "白地図と解答を保存しました",
     printTitle: "白地図の出力", printPaper: "用紙", a4p: "A4 縦", a4l: "A4 横", pScreen: "画面のまま",
-    pmA: "A：PDF 2 ページ", pmAd: "1 ページ目に地図、2 ページ目に解答。両面印刷すると解答が裏面に来ます。",
-    pmB: "B：画像 2 枚", pmBd: "地図と解答を別々の PNG 画像で保存します。",
-    pmC: "C：1 枚にまとめる", pmCd: "縦は上に地図・下に解答、横は左に地図・右に解答。点線で折る・切ると解答を隠せます。",
+    pmA: "A：PDF 3 ページ", pmAd: "1 枚目の表に地図・裏に解答、2 枚目に作答欄。地図と作答欄を並べて解けます。",
+    pmB: "B：画像 3 枚", pmBd: "地図・作答欄・解答を別々の PNG 画像で保存します。",
+    pmC: "C：地図と作答欄を 1 枚に", pmCd: "1 枚目は縦なら上に地図・下に作答欄（横は左右）。解答は 2 枚目。",
+    printColor: "配色", inkOn: "印刷向け", inkOff: "カラー", writeTitle: "作答欄", mapHint: "番号の地形名を作答欄に書きましょう",
+    schWrite: "作答欄", schP1: "1 枚目 表", schP2: "1 枚目 裏", schP3: "2 枚目", schI1: "画像1", schI2: "画像2", schI3: "画像3",
     screenOnlyB: "「画面のまま」は今見えている範囲をそのまま保存します（B のみ）。", cancel: "キャンセル", printGo: "出力",
-    sheetTitle: "白地図", nameF: "名前", dateF: "日付", scoreF: "点数", schMap: "地図", schKey: "解答", schFront: "1 枚目（表）", schBack: "2 枚目（裏）", schImg: "画像",
+    sheetTitle: "白地図", nameF: "名前", dateF: "日付", scoreF: "点数", schMap: "地図", schKey: "解答", schImg: "画像",
     pdfMaking: "PDF を作成しています…", pdfFail: "PDF を作れませんでした。ネット接続を確認するか、B を選んでください",
     quizTitle: "テスト中", quizNeed: "テストには地形を2つ以上選んでください", quizProgress: (a, t) => `回答 ${a}/${t}`,
     quizCheck: "答え合わせ", quizSave: "画像を保存", quizExit: "終了", quizExitConfirm: "もう一度押すと終了",
@@ -462,6 +476,7 @@ const I18N = {
     quizEmpty: "残りの地名はありません。入れ替えるには、使った欄を空欄に戻してください", quizDone: "答え合わせ済みです",
   },
   zh: {
+    reliefColor: "彩色起伏圖", reliefGray: "灰階起伏圖", fossa: "大地溝帶",
     simple: "簡易", detail: "精緻", relief: "起伏圖", opacity: "地形不透明度", detailLabel: "範圍顯示方式",
     prefsTitle: "都道府縣（選取後，只要有一部分在該縣內的地形都會一起勾選）",
     prefAdded: (n, c) => `已勾選「${n}」的 ${c} 個地形`, prefRemoved: (n) => `已取消「${n}」`,
@@ -488,11 +503,13 @@ const I18N = {
     needOne: "請至少勾選一個地形", reliefNo: "起伏模式下無法使用測驗與白地圖，請切換到「簡易」或「精緻」",
     answerKey: "解答", blankSaved: "已輸出白地圖與解答",
     printTitle: "輸出白地圖", printPaper: "紙張", a4p: "A4 直式", a4l: "A4 橫式", pScreen: "畫面範圍",
-    pmA: "A：PDF 兩頁", pmAd: "第 1 頁是地圖、第 2 頁是解答。雙面列印時解答在背面。",
-    pmB: "B：兩張圖片", pmBd: "地圖和解答分別存成 PNG 圖片。",
-    pmC: "C：合成一張", pmCd: "直式為上方地圖、下方解答；橫式為左方地圖、右方解答。沿虛線折起或剪開即可遮住解答。",
+    pmA: "A：PDF 三頁", pmAd: "第 1 張正面地圖、背面解答，第 2 張是作答欄。地圖和作答欄可以並排作答。",
+    pmB: "B：三張圖片", pmBd: "地圖、作答欄、解答分別存成 PNG 圖片。",
+    pmC: "C：地圖和作答欄合成一張", pmCd: "第 1 張直式為上方地圖、下方作答欄（橫式為左右），解答在第 2 張。",
+    printColor: "配色", inkOn: "列印用", inkOff: "彩色", writeTitle: "作答欄", mapHint: "請把編號對應的地形名稱寫在作答欄",
+    schWrite: "作答欄", schP1: "第1張正面", schP2: "第1張背面", schP3: "第2張", schI1: "圖片1", schI2: "圖片2", schI3: "圖片3",
     screenOnlyB: "「畫面範圍」直接輸出目前看到的地圖（只有 B）。", cancel: "取消", printGo: "輸出",
-    sheetTitle: "白地圖", nameF: "姓名", dateF: "日期", scoreF: "分數", schMap: "地圖", schKey: "解答", schFront: "第 1 張（正面）", schBack: "第 2 張（背面）", schImg: "圖片",
+    sheetTitle: "白地圖", nameF: "姓名", dateF: "日期", scoreF: "分數", schMap: "地圖", schKey: "解答", schImg: "圖片",
     pdfMaking: "正在製作 PDF…", pdfFail: "無法製作 PDF，請確認網路連線或改選 B",
     quizTitle: "測驗中", quizNeed: "測驗至少需要勾選兩個地形", quizProgress: (a, t) => `已作答 ${a}/${t}`,
     quizCheck: "對答案", quizSave: "輸出圖片", quizExit: "退出", quizExitConfirm: "再按一次退出",
@@ -615,12 +632,13 @@ const state = {
   lang: LS.get("lang", "ja") === "zh" ? "zh" : "ja",
   // 舊版的「起伏」是第三種模式，改為獨立開關後轉成「詳細＋起伏圖」
   mode: oldMode === "relief" ? "detail" : MODES.includes(oldMode) ? oldMode : (LS.get("detail", false) === true ? "detail" : "simple"),
-  relief: oldMode === "relief" || LS.get("relief", false) === true,
+  // 起伏圖："" 不顯示、"color" 彩色、"gray" 灰階（舊版的 true 視為彩色）
+  relief: oldMode === "relief" || LS.get("relief", "") === true ? "color" : ["color", "gray"].includes(LS.get("relief", "")) ? LS.get("relief", "") : "",
   opacity: +LS.get("opacity", 50),
   prefs: new Set(LS.get("prefs", [])),
   found: null,
 };
-if (!RELIEF) state.relief = false;
+if (!RELIEF) state.relief = "";
 const T = (k, ...a) => { const v = I18N[state.lang][k]; return typeof v === "function" ? v(...a) : v; };
 if (!CATS.some((c) => c.id === state.cat)) state.cat = CATS[0].id;
 let groups = LS.get("groups", []);
@@ -641,7 +659,7 @@ function encodeState() {
   const sel = bits(MAX_ID + 1); for (const id of state.sel) { const n = ITEM.get(id).i; sel[n >> 3] |= 1 << (n & 7); }
   const pf = bits(48); for (const id of state.prefs) pf[id >> 3] |= 1 << (id & 7);
   const flags = (state.lang === "zh") | (state.mode === "detail") << 1 | (state.lv1 << 3) | (state.lv2 << 4) | (state.names << 5) | (state.kana << 6) | (state.pref << 7);
-  const flags2 = (state.relief ? 1 : 0) | (Math.round(state.opacity / 5) << 1);
+  const flags2 = (state.relief ? 1 : 0) | (Math.round(state.opacity / 5) << 1) | (state.relief === "gray" ? 64 : 0);
   return "s2." + b64u.enc([flags, flags2, ...pf, ...sel]);
 }
 function decodeState(token) {
@@ -659,10 +677,10 @@ function decodeState(token) {
     // s1 的模式欄位：0 簡易、1 詳細、2 起伏（起伏改為獨立開關）
     const m = (f >> 1) & 3;
     Object.assign(state, { lang: f & 1 ? "zh" : "ja", lv1: !!(f & 8), lv2: !!(f & 16), names: !!(f & 32), kana: !!(f & 64), pref: !!(f & 128), sel, prefs });
-    if (v === "s2.") { state.mode = m & 1 ? "detail" : "simple"; state.relief = !!(f2 & 1); state.opacity = Math.min(100, (f2 >> 1) * 5); }
-    else { state.mode = m === 1 || m === 2 ? "detail" : "simple"; state.relief = m === 2; }
+    if (v === "s2.") { state.mode = m & 1 ? "detail" : "simple"; state.relief = f2 & 1 ? (f2 & 64 ? "gray" : "color") : ""; state.opacity = Math.min(100, (f2 >> 1) * 5); }
+    else { state.mode = m === 1 || m === 2 ? "detail" : "simple"; state.relief = m === 2 ? "color" : ""; }
     if (!state.lv1 && !state.lv2) state.lv1 = true;
-    if (!RELIEF) state.relief = false;
+    if (!RELIEF) state.relief = "";
     persist();
   } catch { /* 網址壞掉時忽略，沿用原本的狀態 */ }
 }
@@ -680,6 +698,7 @@ let leaderG, W = 0, H = 0, projection, path, zoomG, labelG, transform = d3.zoomI
 const curve = d3.line().curve(d3.curveCatmullRom.alpha(0.5));
 // 白地圖輸出與測驗用的狀態
 let blankMode = false, blankKey = [];
+let inkMode = false; // 列印配色（只在輸出白地圖時暫時開啟，不影響平常畫面）
 const quiz = { on: false, ids: [], answers: new Map(), graded: false, pool: [] };
 // 拖曳、縮放手勢進行中只對整張 SVG 套 CSS transform（由 GPU 處理，不重繪向量），手勢結束才套用真正的座標並重排地名
 let gestureBase = null;
@@ -748,6 +767,19 @@ function buildBase(opt = {}) {
   svg.append("style").text(MAP_STYLE);
   const defs = svg.append("defs");
   defs.append("clipPath").attr("id", "landClip").append("path").attr("d", path(land));
+  // 灰階起伏圖：去色後稍微提亮，讓上面的地形顏色清楚
+  const gf = defs.append("filter").attr("id", "grayRelief").attr("color-interpolation-filters", "sRGB");
+  gf.append("feColorMatrix").attr("type", "saturate").attr("values", 0);
+  const ct = gf.append("feComponentTransfer");
+  for (const c of ["R", "G", "B"]) ct.append("feFunc" + c).attr("type", "linear").attr("slope", 0.75).attr("intercept", 0.25);
+  // 列印用花紋（間距刻意放寬，避免畫面雜亂）
+  const pat = (id, w, h, draw) => draw(defs.append("pattern").attr("id", id).attr("width", w).attr("height", h).attr("patternUnits", "userSpaceOnUse"));
+  pat("pat-plain", 12, 12, (q) => q.append("circle").attr("cx", 6).attr("cy", 6).attr("r", 0.9).attr("fill", "#555"));
+  pat("pat-plateau", 12, 12, (q) => q.append("path").attr("d", "M-3,3L3,-3M0,12L12,0M9,15L15,9").attr("stroke", "#777").attr("stroke-width", 0.7));
+  pat("pat-basin", 14, 14, (q) => q.append("path").attr("d", "M0,0L14,14M14,0L0,14").attr("stroke", "#888").attr("stroke-width", 0.6));
+  pat("pat-range", 22, 16, (q) => q.append("path").attr("d", "M5,12L10,5L15,12").attr("fill", "none").attr("stroke", "#555").attr("stroke-width", 0.8));
+  pat("pat-lake", 10, 7, (q) => q.append("path").attr("d", "M1,3.5H9").attr("stroke", "#777").attr("stroke-width", 0.6));
+  pat("pat-fault", 18, 18, (q) => q.append("circle").attr("cx", 9).attr("cy", 9).attr("r", 1.3).attr("fill", "#777"));
   svg.append("rect").attr("class", "sea").attr("width", W).attr("height", H);
   zoomG = svg.append("g");
   zoomG.append("path").attr("class", "land").attr("d", path(land));
@@ -788,19 +820,37 @@ function pxPerKm(lonlat) {
 // 起伏圖開啟時，地形範圍（面、帶、湖）依滑桿調整不透明度；河川線、縣界、地名不受影響
 function applyOpacity() {
   if (!zoomG) return;
-  const op = state.relief && RELIEF ? state.opacity / 100 : 1;
+  const op = state.relief && RELIEF && !inkMode ? state.opacity / 100 : 1;
   for (const id of ["#areas", "#bands", "#lakes"]) zoomG.select(id).attr("opacity", op);
+}
+// 列印配色的花紋圖例：只列出有用到的花紋
+function drawInkLegend(g) {
+  const used = new Set();
+  for (const it of ITEM_LIST) if (state.sel.has(it.id) && shown(it)) used.add(it.cat.id === "fault" && it.p ? "fault" : it.cat.id);
+  const rows = [["plain", "pat-plain"], ["plateau", "pat-plateau"], ["basin", "pat-basin"], ["range", "pat-range"], ["lake", "pat-lake"], ["fault", "pat-fault"]]
+    .filter(([c]) => used.has(c));
+  if (!rows.length) return;
+  const x = 10, y0 = H - 14 - rows.length * 18;
+  g.append("rect").attr("x", x - 4).attr("y", y0 - 6).attr("width", 108).attr("height", rows.length * 18 + 8).attr("fill", "#fff").attr("stroke", "#999");
+  rows.forEach(([c, id], i) => {
+    const y = y0 + i * 18;
+    g.append("rect").attr("x", x).attr("y", y).attr("width", 22).attr("height", 12).attr("fill", `url(#${id})`).attr("stroke", "#333");
+    g.append("text").attr("x", x + 28).attr("y", y + 10).text(c === "fault" ? T("fossa") : catLabel(CATS.find((q) => q.id === c)));
+  });
 }
 // 起伏圖的標高圖例（畫在 SVG 裡，輸出圖片時一起帶出）
 function drawLegend() {
   const g = svg.select("#legend"); g.selectAll("*").remove();
+  if (inkMode) { drawInkLegend(g); return; }
   if (!state.relief || !RELIEF) return;
   const stops = RELIEF.stops, x = 12, y0 = H - 80 - stops.length * 14, w = 14, h = 14;
   g.append("rect").attr("x", x - 6).attr("y", y0 - 22).attr("width", 92).attr("height", stops.length * h + 30)
     .attr("rx", 6).attr("fill", "#fff").attr("fill-opacity", .85);
   g.append("text").attr("x", x).attr("y", y0 - 8).attr("font-weight", 700).text(T("legend"));
   stops.slice().reverse().forEach(([m, col], i) => {
-    g.append("rect").attr("x", x).attr("y", y0 + i * h).attr("width", w).attr("height", h).attr("fill", col);
+    // 灰階起伏圖時，圖例套用同樣的去色濾鏡
+    g.append("rect").attr("x", x).attr("y", y0 + i * h).attr("width", w).attr("height", h).attr("fill", col)
+      .attr("filter", state.relief === "gray" ? "url(#grayRelief)" : null);
     g.append("text").attr("x", x + w + 6).attr("y", y0 + i * h + 11).text(m === 3000 ? "3000〜" : String(m));
   });
 }
@@ -810,7 +860,9 @@ function drawFeatures() {
   const relief = !!(state.relief && RELIEF);
   const areas = zoomG.select("#areas"), bands = zoomG.select("#bands"), lines = zoomG.select("#lines"), lakes = zoomG.select("#lakes");
   [areas, bands, lines, lakes].forEach((g) => g.selectAll("*").remove());
-  zoomG.select("#relief").attr("display", relief ? null : "none");
+  zoomG.select("#relief").attr("display", relief && !inkMode ? null : "none").attr("filter", state.relief === "gray" ? "url(#grayRelief)" : null);
+  zoomG.classed("onrelief", relief && !inkMode);
+  svg.classed("ink", inkMode);
   applyOpacity();
   svg.select(".credit3").text(relief ? T("creditRelief") : "");
   const el = svg.node();
@@ -833,7 +885,22 @@ function drawFeatures() {
       if (quiz.on && !quiz.ids.includes(it.id)) continue;
       const geom = geomOf(it);
       const k = cat.kind;
-      if (k === "area" && preciseOf(it)) {
+      const PAT = { plain: "plain", plateau: "plateau", basin: "basin", range: "range" }[cat.id];
+      if (inkMode && (k === "area" || (k === "band" && preciseOf(it)))) {
+        // 列印配色：深灰外框＋類別花紋
+        areas.append("path").attr("d", path(geom)).attr("fill", `url(#pat-${PAT || "plain"})`).attr("stroke", "#333")
+          .attr("stroke-width", 1).attr("vector-effect", "non-scaling-stroke");
+      } else if (inkMode && k === "band") {
+        const mid = it.s[Math.floor(it.s.length / 2)], bw = it.w * pxPerKm(mid);
+        for (const [st, wd] of [["#333", bw + 2], ["#fff", bw], ["url(#pat-range)", bw]])
+          bands.append("path").attr("d", path(geom)).attr("fill", "none").attr("stroke", st).attr("stroke-width", wd)
+            .attr("stroke-linecap", "round").attr("stroke-linejoin", "round");
+      } else if (inkMode && k === "lake") {
+        lakes.append("path").attr("d", path(geom)).attr("fill", "url(#pat-lake)").attr("stroke", "#333").attr("stroke-width", .9).attr("vector-effect", "non-scaling-stroke");
+      } else if (inkMode && k === "fault" && it.p) {
+        areas.append("path").attr("d", path(geom)).attr("fill", "url(#pat-fault)").attr("stroke", "#333").attr("stroke-width", 1)
+          .attr("stroke-dasharray", "3 3").attr("vector-effect", "non-scaling-stroke");
+      } else if (k === "area" && preciseOf(it)) {
         areas.append("path").attr("d", path(geom)).attr("fill", shadeOf(it)).attr("fill-opacity", .6)
           .attr("stroke", d3.color(cat.color).darker(1.3).formatHex()).attr("stroke-width", 1.1).attr("vector-effect", "non-scaling-stroke");
       } else if (k === "area") {
@@ -848,21 +915,22 @@ function drawFeatures() {
           .attr("stroke-opacity", .55).attr("stroke-width", it.w * pxPerKm(mid))
           .attr("stroke-linecap", "round").attr("stroke-linejoin", "round");
       } else if (k === "river") {
-        lines.append("path").attr("class", "river").attr("d", path(geom)).attr("stroke", cat.color).attr("vector-effect", "non-scaling-stroke");
+        lines.append("path").attr("class", "river").attr("d", path(geom)).attr("stroke", inkMode ? "#444" : cat.color).attr("vector-effect", "non-scaling-stroke");
       } else if (k === "current") {
-        const col = it.warm ? "#d9472f" : "#3567c9";
-        const cp = labelG.append("path").attr("fill", "none").attr("stroke", col).attr("stroke-opacity", .75)
-          .attr("stroke-width", 4).attr("stroke-linecap", "round");
+        // 列印配色：暖流實線、寒流虛線
+        const col = inkMode ? "#333" : it.warm ? "#d9472f" : "#3567c9";
+        const cp = labelG.append("path").attr("fill", "none").attr("stroke", col).attr("stroke-opacity", inkMode ? 1 : .75)
+          .attr("stroke-width", inkMode ? 2.4 : 4).attr("stroke-linecap", "round").attr("stroke-dasharray", inkMode && !it.warm ? "8 5" : null);
         const head = labelG.append("path").attr("fill", col);
         currents.push({ el: cp, head, pts: it.s.map((c) => projection(c)) });
       } else if (k === "trench") {
-        lines.append("path").attr("d", path(geom)).attr("fill", "none").attr("stroke", cat.color).attr("stroke-width", 2.4)
+        lines.append("path").attr("d", path(geom)).attr("fill", "none").attr("stroke", inkMode ? "#333" : cat.color).attr("stroke-width", 2.4)
           .attr("stroke-dasharray", "10 4").attr("stroke-linecap", "round").attr("vector-effect", "non-scaling-stroke");
       } else if (k === "fault" && it.p) {
         areas.append("path").attr("d", path(geom)).attr("fill", cat.color).attr("fill-opacity", .16)
           .attr("stroke", cat.color).attr("stroke-width", 1.2).attr("stroke-dasharray", "3 3").attr("vector-effect", "non-scaling-stroke");
       } else if (k === "fault") {
-        lines.append("path").attr("d", path(geom)).attr("fill", "none").attr("stroke", cat.color).attr("stroke-width", 2.6)
+        lines.append("path").attr("d", path(geom)).attr("fill", "none").attr("stroke", inkMode ? "#333" : cat.color).attr("stroke-width", 2.6)
           .attr("stroke-dasharray", "7 3").attr("stroke-linecap", "round").attr("vector-effect", "non-scaling-stroke");
       } else if (k === "lake") {
         lakes.append("path").attr("d", path(geom)).attr("fill", cat.color).attr("stroke", "#2f7ab3")
@@ -965,10 +1033,12 @@ function addLabel(it, cat, lonlat, mode) {
   const k = cat.kind;
   let align = "middle", dx = 0, size = 12, color = "#2a332e";
   if (k === "volcano" || k === "peak") {
-    g.append("path").attr("d", "M0,-6L5.5,4H-5.5Z").attr("fill", cat.color).attr("stroke", "#fff").attr("stroke-width", 1);
+    // 列印配色：火山＝黑三角、山＝白三角
+    g.append("path").attr("d", "M0,-6L5.5,4H-5.5Z").attr("fill", inkMode ? (k === "volcano" ? "#222" : "#fff") : cat.color)
+      .attr("stroke", inkMode ? "#222" : "#fff").attr("stroke-width", inkMode ? 1.2 : 1);
     align = "start"; dx = 8; size = 11.5; color = cat.color;
   } else if (k === "dot") {
-    g.append("circle").attr("r", 3).attr("fill", cat.color).attr("stroke", "#fff").attr("stroke-width", 1);
+    g.append("circle").attr("r", 3).attr("fill", inkMode ? "#222" : cat.color).attr("stroke", "#fff").attr("stroke-width", 1);
     align = "start"; dx = 6; size = 11.5; color = cat.color;
   } else if (k === "band") { color = "#6b4320"; size = 12.5; }
   else if (k === "area") { color = d3.color(cat.color).darker(1.6).formatHex(); size = 12; }
@@ -1472,8 +1542,13 @@ async function exportPNG() {
 }
 $("btnExport").onclick = exportPNG;
 
-// ---------- 白地圖＋解答（列印版面） ----------
+// ---------- 白地圖＋作答欄＋解答（列印版面） ----------
 // 解答清單：圓圈編號＋地名（日文版附讀音），在指定方框內自動分欄
+function numBadge(sel, cx, cy, r, num, fs) {
+  sel.append("circle").attr("cx", cx).attr("cy", cy).attr("r", r).attr("fill", "#fff").attr("stroke", "#1e2a23").attr("stroke-width", 1.2);
+  sel.append("text").attr("x", cx).attr("y", cy + fs * 0.32).attr("text-anchor", "middle")
+    .attr("font-size", String(num).length > 2 ? fs * 0.62 : fs * 0.78).attr("font-weight", 700).text(num);
+}
 function drawKeyList(sel, list, x, y, w, h) {
   const n = list.length;
   let rowH = 24, fs = 13;
@@ -1482,13 +1557,25 @@ function drawKeyList(sel, list, x, y, w, h) {
   rows = Math.ceil(n / cols);
   const colW = w / cols;
   list.forEach(({ n: num, it }, i) => {
-    const c = Math.floor(i / rows), r = i % rows, cx = x + c * colW, cy = y + r * rowH;
-    const rr = fs * 0.72;
-    sel.append("circle").attr("cx", cx + rr).attr("cy", cy + rr).attr("r", rr).attr("fill", "#fff").attr("stroke", "#1e2a23").attr("stroke-width", 1.2);
-    sel.append("text").attr("x", cx + rr).attr("y", cy + rr + fs * 0.32).attr("text-anchor", "middle")
-      .attr("font-size", String(num).length > 2 ? fs * 0.62 : fs * 0.78).attr("font-weight", 700).text(num);
+    const c = Math.floor(i / rows), r = i % rows, cx = x + c * colW, cy = y + r * rowH, rr = fs * 0.72;
+    numBadge(sel, cx + rr, cy + rr, rr, num, fs);
     const extra = state.lang === "ja" ? `（${readingOf(it)}）` : `（${it.n}）`;
     sel.append("text").attr("x", cx + rr * 2 + 6).attr("y", cy + rr + fs * 0.36).attr("font-size", fs).text(nameOf(it) + extra);
+  });
+}
+// 作答欄：圓圈編號＋書寫線，列高足夠寫漢字與讀音
+function drawWriteList(sel, list, x, y, w, h) {
+  const n = list.length;
+  let rowH = 34, fs = 12;
+  let rows = Math.max(1, Math.floor(h / rowH)), cols = Math.ceil(n / rows);
+  if (w / cols < 170) { rowH = 27; fs = 11; rows = Math.max(1, Math.floor(h / rowH)); cols = Math.ceil(n / rows); }
+  rows = Math.ceil(n / cols);
+  const colW = w / cols;
+  list.forEach(({ n: num }, i) => {
+    const c = Math.floor(i / rows), r = i % rows, cx = x + c * colW, cy = y + r * rowH, rr = fs * 0.75;
+    numBadge(sel, cx + rr, cy + rowH - rr - 6, rr, num, fs);
+    sel.append("line").attr("x1", cx + rr * 2 + 6).attr("x2", cx + colW - 12).attr("y1", cy + rowH - 5).attr("y2", cy + rowH - 5)
+      .attr("stroke", "#444").attr("stroke-width", 0.8);
   });
 }
 function newSvg(w, h) {
@@ -1535,11 +1622,15 @@ function renderOffscreenMap(w, h) {
 }
 // A4 頁面（CSS px，96 dpi）；輸出時放大 2.5 倍約 240 dpi
 const A4 = { p: [794, 1123], l: [1123, 794] };
-function sheetHeader(sel, w, m, isKey) {
+// kind：map＝題目（地圖）、sheet＝作答欄、combo＝地圖＋作答欄同頁（後兩者含姓名・日期・分數欄）、key＝解答
+function sheetHeader(sel, w, m, kind) {
   sel.append("text").attr("x", m).attr("y", m + 20).attr("font-size", 20).attr("font-weight", 700)
-    .text(`${T("title")}　${T(isKey ? "answerKey" : "sheetTitle")}`);
-  if (isKey) return;
-  // 名前・日付・点数欄
+    .text(`${T("title")}　${T({ map: "sheetTitle", combo: "sheetTitle", sheet: "writeTitle", key: "answerKey" }[kind])}`);
+  if (kind === "map") {
+    sel.append("text").attr("x", w - m).attr("y", m + 20).attr("font-size", 11).attr("text-anchor", "end").attr("fill", "#5a6b62").text(T("mapHint"));
+    return;
+  }
+  if (kind !== "sheet" && kind !== "combo") return;
   const fields = [[T("nameF"), 150], [T("dateF"), 100], [T("scoreF"), 70]];
   let x = w - m;
   for (let i = fields.length - 1; i >= 0; i--) {
@@ -1553,7 +1644,7 @@ function sheetHeader(sel, w, m, isKey) {
 }
 function sheetFooter(sel, w, h, m) {
   const t = [T("credit"), T("credit2")];
-  if (state.relief && RELIEF) t.unshift(T("creditRelief"));
+  if (state.relief && RELIEF && !inkMode) t.unshift(T("creditRelief"));
   t.forEach((s, i) => sel.append("text").attr("x", w - m).attr("y", h - m / 2 - (t.length - 1 - i) * 12).attr("text-anchor", "end").attr("font-size", 9).attr("fill", "#5a6b62").text(s));
 }
 function placeMap(sel, mapNode, x, y) {
@@ -1563,37 +1654,46 @@ function placeMap(sel, mapNode, x, y) {
   sel.append("rect").attr("x", x).attr("y", y).attr("width", +n.getAttribute("width")).attr("height", +n.getAttribute("height"))
     .attr("fill", "none").attr("stroke", "#9aa59a");
 }
-// 版面：A＝地圖頁＋解答頁（PDF 兩頁）、B＝同樣兩頁但存成兩張 PNG、C＝一頁上下（橫向為左右）分開
+function writePage(w, h, key) {
+  const m = 36, top = m + 40, foot = 34, pg = newSvg(w, h);
+  sheetHeader(pg.sel, w, m, "sheet");
+  drawWriteList(pg.sel, key, m, top, w - 2 * m, h - top - foot);
+  return { node: pg.node, w, h };
+}
+function keyPage(w, h, key) {
+  const m = 36, top = m + 40, foot = 34, pg = newSvg(w, h);
+  sheetHeader(pg.sel, w, m, "key");
+  drawKeyList(pg.sel, key, m, top, w - 2 * m, h - top - foot);
+  sheetFooter(pg.sel, w, h, m);
+  return { node: pg.node, w, h };
+}
+// 版面：
+//  A＝PDF 3 頁：地圖、解答（雙面列印時在地圖背面）、作答欄（獨立一張，作答時和地圖並排）
+//  B＝3 張 PNG：地圖、作答欄、解答
+//  C＝第 1 張上地圖下作答欄（橫式為左右），第 2 張解答
 function buildSheets(mode, orient) {
   const [w, h] = A4[orient], m = 36, top = m + 40, foot = 34;
   if (mode === "C") {
     const page = newSvg(w, h);
-    sheetHeader(page.sel, w, m, false);
+    sheetHeader(page.sel, w, m, "combo");
     const portrait = orient === "p";
     const mapW = portrait ? w - 2 * m : Math.round((w - 2 * m) * 0.64);
-    const mapH = portrait ? Math.round((h - top - foot - m) * 0.64) : h - top - foot;
+    const mapH = portrait ? Math.round((h - top - foot - m) * 0.62) : h - top - foot;
     const map = renderOffscreenMap(mapW, mapH);
     placeMap(page.sel, map.node, m, top);
-    // 折線／剪線＋解答區
-    const kx = portrait ? m : m + mapW + 24, ky = portrait ? top + mapH + 26 : top;
-    const kw = portrait ? w - 2 * m : w - m - kx, kh = portrait ? h - foot - ky - 8 : mapH;
-    if (portrait) page.sel.append("line").attr("x1", m).attr("x2", w - m).attr("y1", ky - 13).attr("y2", ky - 13).attr("stroke", "#888").attr("stroke-dasharray", "6 4");
-    else page.sel.append("line").attr("x1", kx - 12).attr("x2", kx - 12).attr("y1", top).attr("y2", top + mapH).attr("stroke", "#888").attr("stroke-dasharray", "6 4");
-    page.sel.append("text").attr("x", kx).attr("y", ky + 4).attr("font-size", 13).attr("font-weight", 700).text(T("answerKey"));
-    drawKeyList(page.sel, map.key, kx, ky + 14, kw, kh - 14);
+    const kx = portrait ? m : m + mapW + 22, ky = portrait ? top + mapH + 16 : top;
+    const kw = portrait ? w - 2 * m : w - m - kx, kh = portrait ? h - foot - ky : mapH;
+    drawWriteList(page.sel, map.key, kx, ky, kw, kh);
     sheetFooter(page.sel, w, h, m);
-    return [{ node: page.node, w, h }];
+    return [{ node: page.node, w, h }, keyPage(w, h, map.key)];
   }
   const mapPage = newSvg(w, h);
-  sheetHeader(mapPage.sel, w, m, false);
+  sheetHeader(mapPage.sel, w, m, "map");
   const map = renderOffscreenMap(w - 2 * m, h - top - foot - m / 2);
   placeMap(mapPage.sel, map.node, m, top);
   sheetFooter(mapPage.sel, w, h, m);
-  const keyPage = newSvg(w, h);
-  sheetHeader(keyPage.sel, w, m, true);
-  drawKeyList(keyPage.sel, map.key, m, top, w - 2 * m, h - top - foot);
-  sheetFooter(keyPage.sel, w, h, m);
-  return [{ node: mapPage.node, w, h }, { node: keyPage.node, w, h }];
+  const mp = { node: mapPage.node, w, h }, kp = keyPage(w, h, map.key), wp = writePage(w, h, map.key);
+  return mode === "A" ? [mp, kp, wp] : [mp, wp, kp];
 }
 // jsPDF：只有選 A 時才從 cdnjs 載入
 let jsPdfP = null;
@@ -1609,43 +1709,48 @@ function loadJsPdf() {
 const blobToDataURL = (b) => new Promise((r) => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(b); });
 
 // 列印設定對話框
-const print = { orient: LS.get("printOrient", "p"), mode: LS.get("printMode", "A") };
+const print = { orient: LS.get("printOrient", "p"), mode: LS.get("printMode", "A"), ink: LS.get("printInk", true) !== false };
 function drawSchematic(el, mode, orient) {
-  // 示意圖：頁面方框＋「地図／解答」的相對位置（不是實際圖的縮小）
-  const g = d3.select(el).attr("viewBox", "0 0 150 90"); g.selectAll("*").remove();
-  const pw = orient === "l" ? 50 : orient === "s" ? 50 : 38, ph = orient === "l" ? 36 : orient === "s" ? 32 : 52;
+  // 示意圖：頁面方框＋「地圖／作答欄／解答」的相對位置（不是實際圖的縮小）
+  const g = d3.select(el).attr("viewBox", "0 0 170 92"); g.selectAll("*").remove();
+  const land = orient === "l" || orient === "s";
+  const pw = land ? 40 : 30, ph = land ? 29 : 42;
   const page = (x, y, tag) => {
     g.append("rect").attr("x", x).attr("y", y).attr("width", pw).attr("height", ph).attr("rx", 2).attr("fill", "#fff").attr("stroke", "#5c6b62");
-    if (tag) g.append("text").attr("x", x + pw / 2).attr("y", y + ph + 11).attr("text-anchor", "middle").attr("font-size", 8).attr("fill", "currentColor").text(tag);
+    if (tag) g.append("text").attr("x", x + pw / 2).attr("y", y + ph + 10).attr("text-anchor", "middle").attr("font-size", 7.5).attr("fill", "currentColor").text(tag);
   };
   const block = (x, y, bw, bh, label, fill) => {
-    g.append("rect").attr("x", x).attr("y", y).attr("width", bw).attr("height", bh).attr("fill", fill).attr("stroke", "none");
-    g.append("text").attr("x", x + bw / 2).attr("y", y + bh / 2 + 3).attr("text-anchor", "middle").attr("font-size", 8).attr("fill", "#1e2a23").text(label);
+    g.append("rect").attr("x", x).attr("y", y).attr("width", bw).attr("height", bh).attr("fill", fill);
+    g.append("text").attr("x", x + bw / 2).attr("y", y + bh / 2 + 3).attr("text-anchor", "middle").attr("font-size", 7.5).attr("fill", "#1e2a23").text(label);
   };
-  const y0 = 10;
+  const MAP = "#cfe3c4", WR = "#dbe4f5", KEY = "#f7e3b5", y0 = 12;
   if (mode === "C") {
-    const x = 75 - pw / 2; page(x, y0, "");
-    if (orient === "l") {
-      block(x + 3, y0 + 3, pw * 0.6 - 4, ph - 6, T("schMap"), "#cfe3c4");
-      g.append("line").attr("x1", x + pw * 0.62).attr("x2", x + pw * 0.62).attr("y1", y0 + 2).attr("y2", y0 + ph - 2).attr("stroke", "#888").attr("stroke-dasharray", "2 2");
-      block(x + pw * 0.64, y0 + 3, pw * 0.36 - 3, ph - 6, T("schKey"), "#f7e3b5");
+    const x1 = 85 - pw - 8, x2 = 85 + 8;
+    page(x1, y0, T("schImg") + "1");
+    if (land) {
+      block(x1 + 2, y0 + 2, pw * 0.6 - 3, ph - 4, T("schMap"), MAP);
+      block(x1 + pw * 0.62, y0 + 2, pw * 0.38 - 2, ph - 4, T("schWrite"), WR);
     } else {
-      block(x + 3, y0 + 3, pw - 6, ph * 0.6 - 4, T("schMap"), "#cfe3c4");
-      g.append("line").attr("x1", x + 2).attr("x2", x + pw - 2).attr("y1", y0 + ph * 0.62).attr("y2", y0 + ph * 0.62).attr("stroke", "#888").attr("stroke-dasharray", "2 2");
-      block(x + 3, y0 + ph * 0.64, pw - 6, ph * 0.36 - 3, T("schKey"), "#f7e3b5");
+      block(x1 + 2, y0 + 2, pw - 4, ph * 0.6 - 3, T("schMap"), MAP);
+      block(x1 + 2, y0 + ph * 0.62, pw - 4, ph * 0.38 - 2, T("schWrite"), WR);
     }
+    page(x2, y0, T("schImg") + "2");
+    block(x2 + 2, y0 + 2, pw - 4, ph - 4, T("schKey"), KEY);
     return;
   }
-  const x1 = 75 - pw - 8, x2 = 75 + 8;
-  page(x1, y0, mode === "A" ? T("schFront") : T("schImg") + "1");
-  page(x2, y0, mode === "A" ? T("schBack") : T("schImg") + "2");
-  block(x1 + 3, y0 + 3, pw - 6, ph - 6, T("schMap"), "#cfe3c4");
-  block(x2 + 3, y0 + 3, pw - 6, ph - 6, T("schKey"), "#f7e3b5");
-  if (mode === "A") g.append("path").attr("d", `M${x1 + pw + 2},${y0 + ph / 2} C${75},${y0 + ph / 2 - 10} ${75},${y0 + ph / 2 - 10} ${x2 - 2},${y0 + ph / 2}`)
-    .attr("fill", "none").attr("stroke", "#888").attr("stroke-dasharray", "2 2");
+  const xs = [85 - pw * 1.5 - 12, 85 - pw / 2, 85 + pw / 2 + 12];
+  const order = mode === "A" ? [["schMap", MAP, "schP1"], ["schKey", KEY, "schP2"], ["schWrite", WR, "schP3"]]
+    : [["schMap", MAP, "schI1"], ["schWrite", WR, "schI2"], ["schKey", KEY, "schI3"]];
+  order.forEach(([lab, col, tag], i) => { page(xs[i], y0, T(tag)); block(xs[i] + 2, y0 + 2, pw - 4, ph - 4, T(lab), col); });
+  if (mode === "A") {
+    // 第 1、2 頁是同一張紙的正反面
+    g.append("path").attr("d", `M${xs[0] + pw / 2},${y0 - 3} C${xs[0] + pw / 2},${y0 - 10} ${xs[1] + pw / 2},${y0 - 10} ${xs[1] + pw / 2},${y0 - 3}`)
+      .attr("fill", "none").attr("stroke", "#888").attr("stroke-dasharray", "2 2");
+  }
 }
 function renderPrintDlg() {
   for (const [id, o] of [["pPortrait", "p"], ["pLandscape", "l"], ["pScreen", "s"]]) $(id).setAttribute("aria-pressed", String(print.orient === o));
+  $("pInk").setAttribute("aria-pressed", String(print.ink)); $("pColor").setAttribute("aria-pressed", String(!print.ink));
   if (print.orient === "s") print.mode = "B";
   for (const m of ["A", "B", "C"]) {
     const card = $("pm" + m), dis = print.orient === "s" && m !== "B";
@@ -1660,20 +1765,24 @@ function openPrintDlg() {
   setSheet(false); renderPrintDlg(); $("printDlg").hidden = false;
 }
 for (const [id, o] of [["pPortrait", "p"], ["pLandscape", "l"], ["pScreen", "s"]]) $(id).onclick = () => { print.orient = o; LS.set("printOrient", o); renderPrintDlg(); };
+for (const [id, v] of [["pInk", true], ["pColor", false]]) $(id).onclick = () => { print.ink = v; LS.set("printInk", v); renderPrintDlg(); };
 for (const m of ["A", "B", "C"]) $("pm" + m).querySelector("input").onchange = () => { print.mode = m; LS.set("printMode", m); renderPrintDlg(); };
 $("printCancel").onclick = () => ($("printDlg").hidden = true);
 $("printGo").onclick = async () => {
   const btn = $("printGo"); btn.disabled = true;
   const ts = stamp(), base = `日本地形_白地図_${ts}`;
+  inkMode = print.ink;
   try {
     let files;
     if (print.orient === "s") {
-      // 畫面範圍：目前看到的地圖＋解答圖
+      // 畫面範圍：目前看到的地圖＋作答欄（A4 直式）＋解答圖
       blankMode = true; drawFeatures();
       const mapBlob = await svgToBlob(svg.node(), W, H);
-      const key = answerKeySvg(blankKey);
-      blankMode = false; drawFeatures();
-      files = [[mapBlob, base + ".png"], [await svgToBlob(key.node, key.w, key.h), `日本地形_解答_${ts}.png`]];
+      const key = blankKey.slice();
+      blankMode = false; inkMode = false; drawFeatures();
+      const ks = answerKeySvg(key), ws = writePage(A4.p[0], A4.p[1], key);
+      files = [[mapBlob, base + ".png"], [await svgToBlob(ws.node, ws.w, ws.h, 2), `日本地形_作答欄_${ts}.png`],
+        [await svgToBlob(ks.node, ks.w, ks.h), `日本地形_解答_${ts}.png`]];
     } else {
       const sheets = buildSheets(print.mode, print.orient);
       // PDF 內嵌 JPEG（PNG 會讓檔案大好幾倍），圖片檔則用 PNG
@@ -1688,15 +1797,15 @@ $("printGo").onclick = async () => {
         for (let i = 0; i < blobs.length; i++) { if (i) doc.addPage(); doc.addImage(await blobToDataURL(blobs[i]), "JPEG", 0, 0, pw, ph); }
         files = [[doc.output("blob"), base + ".pdf"]];
       } else if (print.mode === "B") {
-        files = [[blobs[0], base + ".png"], [blobs[1], `日本地形_解答_${ts}.png`]];
-      } else files = [[blobs[0], base + ".png"]];
+        files = [[blobs[0], base + ".png"], [blobs[1], `日本地形_作答欄_${ts}.png`], [blobs[2], `日本地形_解答_${ts}.png`]];
+      } else files = [[blobs[0], base + ".png"], [blobs[1], `日本地形_解答_${ts}.png`]];
     }
     $("printDlg").hidden = true;
     const r = await deliver(files);
     if (r === "downloaded" || r === "saved") toast(T("blankSaved"));
   } catch (err) {
     toast(err && err.message === "jsPDF" ? T("pdfFail") : T("exportFail") + (err && err.message ? err.message : err));
-  } finally { blankMode = false; btn.disabled = false; $("offscreen").textContent = ""; }
+  } finally { blankMode = false; inkMode = false; btn.disabled = false; $("offscreen").textContent = ""; drawFeatures(); }
 };
 $("btnBlank").onclick = openPrintDlg;
 
@@ -1833,7 +1942,8 @@ function applyLang() {
   $("kanaOpt").hidden = L === "zh";
   for (const [id, m] of [["mSimple", "simple"], ["mDetail", "detail"]]) $(id).setAttribute("aria-pressed", String(state.mode === m));
   $("reliefOpt").hidden = !RELIEF;
-  $("optRelief").checked = state.relief;
+  $("optRelief").checked = state.relief === "color";
+  $("optReliefGray").checked = state.relief === "gray";
   $("opacityOpt").hidden = !state.relief;
   $("opacity").value = state.opacity; $("opacityVal").textContent = state.opacity + "%";
   svg.select(".credit:not(.credit2):not(.credit3)").text(T("credit"));
@@ -1843,7 +1953,9 @@ for (const [id, m] of [["mSimple", "simple"], ["mDetail", "detail"]]) {
   $(id).onclick = () => { if (state.mode === m) return; state.mode = m; persist(); applyLang(); drawFeatures(); };
 }
 // 起伏圖開關：開啟時才顯示地形不透明度滑桿
-$("optRelief").onchange = (e) => { state.relief = e.target.checked; persist(); applyLang(); drawFeatures(); };
+// 彩色／灰階起伏圖互斥：勾其中一個會取消另一個
+for (const [id, v] of [["optRelief", "color"], ["optReliefGray", "gray"]])
+  $(id).onchange = (e) => { state.relief = e.target.checked ? v : ""; persist(); applyLang(); drawFeatures(); };
 $("opacity").oninput = (e) => { state.opacity = +e.target.value; $("opacityVal").textContent = state.opacity + "%"; applyOpacity(); };
 $("opacity").onchange = () => persist();
 for (const [id, L] of [["langJa", "ja"], ["langZh", "zh"]]) {
