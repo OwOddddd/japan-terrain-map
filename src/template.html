@@ -767,11 +767,6 @@ function buildBase(opt = {}) {
   svg.append("style").text(MAP_STYLE);
   const defs = svg.append("defs");
   defs.append("clipPath").attr("id", "landClip").append("path").attr("d", path(land));
-  // 灰階起伏圖：去色後稍微提亮，讓上面的地形顏色清楚
-  const gf = defs.append("filter").attr("id", "grayRelief").attr("color-interpolation-filters", "sRGB");
-  gf.append("feColorMatrix").attr("type", "saturate").attr("values", 0);
-  const ct = gf.append("feComponentTransfer");
-  for (const c of ["R", "G", "B"]) ct.append("feFunc" + c).attr("type", "linear").attr("slope", 0.75).attr("intercept", 0.25);
   // 列印用花紋（間距刻意放寬，避免畫面雜亂）
   const pat = (id, w, h, draw) => draw(defs.append("pattern").attr("id", id).attr("width", w).attr("height", h).attr("patternUnits", "userSpaceOnUse"));
   pat("pat-plain", 12, 12, (q) => q.append("circle").attr("cx", 6).attr("cy", 6).attr("r", 0.9).attr("fill", "#555"));
@@ -843,14 +838,12 @@ function drawLegend() {
   const g = svg.select("#legend"); g.selectAll("*").remove();
   if (inkMode) { drawInkLegend(g); return; }
   if (!state.relief || !RELIEF) return;
-  const stops = RELIEF.stops, x = 12, y0 = H - 80 - stops.length * 14, w = 14, h = 14;
+  const stops = state.relief === "gray" ? RELIEF.grayStops : RELIEF.stops, x = 12, y0 = H - 80 - stops.length * 14, w = 14, h = 14;
   g.append("rect").attr("x", x - 6).attr("y", y0 - 22).attr("width", 92).attr("height", stops.length * h + 30)
     .attr("rx", 6).attr("fill", "#fff").attr("fill-opacity", .85);
   g.append("text").attr("x", x).attr("y", y0 - 8).attr("font-weight", 700).text(T("legend"));
   stops.slice().reverse().forEach(([m, col], i) => {
-    // 灰階起伏圖時，圖例套用同樣的去色濾鏡
-    g.append("rect").attr("x", x).attr("y", y0 + i * h).attr("width", w).attr("height", h).attr("fill", col)
-      .attr("filter", state.relief === "gray" ? "url(#grayRelief)" : null);
+    g.append("rect").attr("x", x).attr("y", y0 + i * h).attr("width", w).attr("height", h).attr("fill", col);
     g.append("text").attr("x", x + w + 6).attr("y", y0 + i * h + 11).text(m === 3000 ? "3000〜" : String(m));
   });
 }
@@ -860,7 +853,9 @@ function drawFeatures() {
   const relief = !!(state.relief && RELIEF);
   const areas = zoomG.select("#areas"), bands = zoomG.select("#bands"), lines = zoomG.select("#lines"), lakes = zoomG.select("#lakes");
   [areas, bands, lines, lakes].forEach((g) => g.selectAll("*").remove());
-  zoomG.select("#relief").attr("display", relief && !inkMode ? null : "none").attr("filter", state.relief === "gray" ? "url(#grayRelief)" : null);
+  zoomG.select("#relief").attr("display", relief && !inkMode ? null : "none")
+    // 灰階起伏圖用另一張依標高由淺到深的圖（彩色圖去色後高低亮度不一致）
+    .each(function () { const u = state.relief === "gray" ? RELIEF.imgGray : RELIEF.img; if (this.getAttribute("href") !== u) this.setAttribute("href", u); });
   zoomG.classed("onrelief", relief && !inkMode);
   svg.classed("ink", inkMode);
   applyOpacity();

@@ -10,6 +10,7 @@ html = html
   .replace("/*__RELIEF__*/null", () => JSON.stringify({
     ...JSON.parse(fs.readFileSync(p("src/data/relief.json"), "utf8")),
     img: "data:image/png;base64," + fs.readFileSync(p("src/data/relief.png")).toString("base64"),
+    imgGray: "data:image/png;base64," + fs.readFileSync(p("src/data/relief_gray.png")).toString("base64"),
   }))
   .replace("/*__TERRAIN__*/", () => fs.readFileSync(p("src/terrain.js"), "utf8"));
 fs.writeFileSync(p("japan-terrain.html"), html);

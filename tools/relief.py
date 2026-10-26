@@ -40,6 +40,10 @@ STOPS = [(0, (126, 186, 118)), (100, (170, 208, 132)), (300, (226, 226, 150)), (
          (1000, (200, 150, 92)), (1500, (166, 112, 72)), (2000, (140, 96, 80)), (2500, (170, 150, 140)), (3000, (240, 236, 232))]
 
 
+# 灰階版：亮度隨標高單調變暗（低地淺、高山深），疊色後平野仍清楚
+GRAY_STOPS = [(0, 238), (100, 226), (300, 208), (600, 186), (1000, 160), (1500, 132), (2000, 108), (2500, 88), (3000, 70)]
+
+
 def colorize(h):
     out = np.zeros(h.shape + (3,), np.float32)
     hs = np.clip(h, 0, None)
@@ -75,6 +79,7 @@ def build(scale, out_png, out_json):
     az, alt = math.radians(315), math.radians(45)
     rgba = np.zeros((H, W, 4), np.uint8)
     rgba[..., 3] = (land * 255).astype(np.uint8)
+    gray = rgba.copy()
     # 分段處理（每段前後多取 1 列讓梯度連續），避免 32 位元 Python 記憶體不足
     step = 400
     for r0 in range(0, H, step):
@@ -87,12 +92,17 @@ def build(scale, out_png, out_json):
         rgb = colorize(part) * (0.55 + 0.45 * shade[..., None])
         lo, hi = r0 - a, r0 - a + min(step, H - r0)
         rgba[r0:r0 + (hi - lo), :, :3] = np.clip(rgb[lo:hi], 0, 255).astype(np.uint8)
+        g = np.interp(np.clip(part, 0, None), [t[0] for t in GRAY_STOPS], [t[1] for t in GRAY_STOPS]) * (0.6 + 0.4 * shade)
+        gray[r0:r0 + (hi - lo), :, :3] = np.clip(g[lo:hi], 0, 255).astype(np.uint8)[..., None]
     img = Image.fromarray(rgba, "RGBA")
     img = img.quantize(colors=128, method=Image.Quantize.FASTOCTREE, dither=Image.Dither.NONE)
     img.save(out_png, optimize=True)
+    gimg = Image.fromarray(gray, "RGBA").quantize(colors=48, method=Image.Quantize.FASTOCTREE, dither=Image.Dither.NONE)
+    gimg.save(out_png.replace(".png", "_gray.png"), optimize=True)
     lon0, lon1 = X0 / 2 ** Z * 360 - 180, (X1 + 1) / 2 ** Z * 360 - 180
     json.dump({"west": lon0, "east": lon1, "north": lat_of(Y0), "south": lat_of(Y1 + 1),
-               "stops": [[s[0], "#%02x%02x%02x" % s[1]] for s in STOPS]}, open(out_json, "w"))
+               "stops": [[s[0], "#%02x%02x%02x" % s[1]] for s in STOPS],
+               "grayStops": [[s[0], "#%02x%02x%02x" % ((s[1],) * 3)] for s in GRAY_STOPS]}, open(out_json, "w"))
     print(out_png, img.size, os.path.getsize(out_png) // 1024, "KB")
 
 
