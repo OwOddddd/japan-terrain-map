@@ -116,6 +116,29 @@ function fillHoles(r, maxSize, canTake) {
   }
 }
 for (const r of lowRegs) fillHoles(r, 12, (c) => !owner.has(c));
+
+// 範圍過小補強：小盆地、高原的 1 km 格子常被周圍的山地吃掉（例：三次盆地、蒜山高原）。
+// 結果不到「手繪範圍內陸地格子數」的 40% 時，補上手繪範圍內、尚未被其他地形占用的格子，並標記為概略範圍
+const ringHas = (r, x, y) => { let c = false; for (let a = 0, b = r.length - 1; a < r.length; b = a++) { const [xi, yi] = r[a], [xj, yj] = r[b]; if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) c = !c; } return c; };
+function handCells(it) {
+  const b = boxOf(it.p, 0), out = [];
+  for (let i = b.i0; i <= b.i1; i++) for (let j = b.j0; j <= b.j1; j++) {
+    const k = K(i, j);
+    if (!grid.has(k)) continue; // 只算陸地格子
+    const [x, y] = cellCenter(i, j);
+    if (ringHas(it.p, x, y)) out.push(k);
+  }
+  return out;
+}
+const byName = new Map(CATS.flatMap((c) => c.items).map((it) => [it.n, it]));
+for (const r of lowRegs) {
+  const hc = handCells(byName.get(r.n));
+  if (r.cells.size >= 0.4 * hc.length) continue;
+  const before = r.cells.size;
+  for (const k of hc) if (!owner.has(k)) { owner.set(k, r); r.cells.add(k); }
+  r.supp = true;
+  log.push(`補強：${r.n} ${before} → ${r.cells.size} 格（手繪範圍 ${hc.length} 格）`);
+}
 regions.push(...lowRegs);
 
 // ---------- 2. 台地・高原（可套疊在平野內） ----------
@@ -139,9 +162,8 @@ for (const it of items("plateau")) {
     }
   }
   const seed = cells ? [...cells][0] : findSeed(center(it), ok);
-  if (!seed) { log.push(`沿用手繪：${it.n}（附近找不到台地格子）`); continue; }
-  if (!cells) cells = new Set([seed]);
-  const q = it.n === "シラス台地" ? [] : [seed];
+  if (!cells) cells = new Set(seed ? [seed] : []);
+  const q = it.n === "シラス台地" || !seed ? [] : [seed];
   while (q.length) {
     const [i, j] = IJ(q.pop());
     for (const [di, dj] of N4) {
@@ -150,8 +172,17 @@ for (const it of items("plateau")) {
       cells.add(nk); q.push(nk);
     }
   }
+  // 範圍過小（含找不到格子）：補上手繪範圍內的陸地格子（台地可套疊在平野上）
+  const hc = handCells(it);
+  let supp = false;
+  // シラス台地的手繪範圍刻意畫得很大（含非台地的陸地），以官方「シラス台地」格子為準，不補強
+  if (it.n !== "シラス台地" && cells.size < 0.4 * hc.length) {
+    const before = cells.size;
+    hc.forEach((k) => cells.add(k)); supp = true;
+    log.push(`補強：${it.n} ${before} → ${cells.size} 格（手繪範圍 ${hc.length} 格）`);
+  }
   if (cells.size < 3) { log.push(`沿用手繪：${it.n}（只有 ${cells.size} 格）`); continue; }
-  const r = { n: it.n, cells, layer: "plateau" };
+  const r = { n: it.n, cells, layer: "plateau", supp };
   fillHoles(r, 6, () => true);
   r.cells.forEach((c) => plateauCells.add(c));
   regions.push(r);
@@ -249,7 +280,7 @@ const features = regions.map((r) => {
     const host = outers.find((o) => inside([h[0][0] + 0.5, h[0][1] + 0.5], o[0])) || outers.find((o) => inside(h[0], o[0]));
     if (host) host.push(h);
   }
-  return { type: "Feature", properties: { n: r.n, layer: r.layer }, geometry: { type: "MultiPolygon", coordinates: outers.map((p) => p.map(geo)) } };
+  return { type: "Feature", properties: { n: r.n, layer: r.layer, s: r.supp ? 1 : 0 }, geometry: { type: "MultiPolygon", coordinates: outers.map((p) => p.map(geo)) } };
 });
 let topo = topology({ precise: { type: "FeatureCollection", features } });
 topo = simplify(presimplify(topo), 2.5e-4);

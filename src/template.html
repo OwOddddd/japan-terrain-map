@@ -78,6 +78,8 @@ button:disabled { cursor: not-allowed; opacity: .5; }
 .lv-group { display: inline-flex; gap: 10px; padding: 3px 10px; border: 1px solid var(--line); border-radius: 6px; }
 .opt { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; user-select: none; cursor: pointer; }
 .opt input { accent-color: var(--accent); width: 16px; height: 16px; margin: 0; }
+.opt.slider input { width: 110px; height: auto; }
+.opt.slider b { font-size: 12px; font-variant-numeric: tabular-nums; min-width: 3.2em; }
 .btn {
   border: 1px solid var(--line); background: var(--panel); border-radius: 6px;
   padding: 5px 12px; font-size: 13px;
@@ -181,6 +183,21 @@ body.quiz #btnSheet, body.quiz #btnExport { pointer-events: none; opacity: .45; 
 }
 .modal img { max-width: 100%; max-height: 60vh; object-fit: contain; border: 1px solid var(--line); }
 .modal p { margin: 0; font-size: 13px; color: var(--muted); }
+.print-box { width: min(620px, 100%); }
+.print-box h2 { margin: 0; font-size: 17px; }
+.prow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 13px; }
+.prow.end { justify-content: flex-end; }
+.pmodes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.pmode { display: flex; flex-direction: column; gap: 4px; border: 1px solid var(--line); border-radius: var(--radius); padding: 8px; cursor: pointer; font-size: 13px; }
+.pmode input { position: absolute; opacity: 0; pointer-events: none; }
+.pmode svg { width: 100%; height: auto; color: var(--muted); background: var(--bg); border-radius: 6px; }
+.pmode small { color: var(--muted); font-size: 11px; line-height: 1.5; }
+.pmode.on { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent) inset; }
+.pmode.off { opacity: .4; cursor: not-allowed; }
+.pmode:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+#printNote { margin: 0; font-size: 12px; color: var(--muted); min-height: 1em; }
+#offscreen { position: fixed; left: -100000px; top: 0; overflow: hidden; pointer-events: none; }
+@media (max-width: 640px) { .pmodes { grid-template-columns: 1fr; } .pmode { display: grid; grid-template-columns: 110px 1fr; grid-template-rows: auto auto; column-gap: 10px; } .pmode svg { grid-row: 1 / 3; } }
 .modal input { width: 100%; box-sizing: border-box; border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; background: var(--bg); font-size: 13px; }
 
 /* 寬螢幕（≥900px）：左側欄 */
@@ -273,8 +290,11 @@ body.quiz #btnSheet, body.quiz #btnExport { pointer-events: none; opacity: .45; 
       <button type="button" id="langJa" lang="ja">日本語</button><button type="button" id="langZh" lang="zh-Hant">中文</button>
     </span>
     <span class="seg" role="group" data-t-aria="detailLabel">
-      <button type="button" id="mSimple" data-t="simple"></button><button type="button" id="mDetail" data-t="detail"></button><button type="button" id="mRelief" data-t="relief"></button>
+      <button type="button" id="mSimple" data-t="simple"></button><button type="button" id="mDetail" data-t="detail"></button>
     </span>
+    <label class="opt" id="reliefOpt"><input type="checkbox" id="optRelief"> <span data-t="relief"></span></label>
+    <label class="opt slider" id="opacityOpt" hidden><span data-t="opacity"></span>
+      <input type="range" id="opacity" min="0" max="100" step="5"> <b id="opacityVal"></b></label>
     <span class="lv-group" role="group" data-t-aria="levels">
       <label class="opt"><input type="checkbox" id="lvPri" checked> <span data-t="lv1"></span></label>
       <label class="opt"><input type="checkbox" id="lvExt" checked> <span data-t="lv2"></span></label>
@@ -334,6 +354,22 @@ body.quiz #btnSheet, body.quiz #btnExport { pointer-events: none; opacity: .45; 
   <div class="picker-head"><span data-t="quizPick"></span><button type="button" id="pickClose" aria-label="×">×</button></div>
   <div class="picker-list" id="pickList"></div>
 </div>
+<div class="modal" id="printDlg" hidden>
+  <div class="box print-box" role="dialog" aria-labelledby="printTitle">
+    <h2 id="printTitle" data-t="printTitle"></h2>
+    <div class="prow"><span data-t="printPaper"></span>
+      <span class="seg"><button type="button" id="pPortrait" data-t="a4p"></button><button type="button" id="pLandscape" data-t="a4l"></button><button type="button" id="pScreen" data-t="pScreen"></button></span>
+    </div>
+    <div class="pmodes">
+      <label class="pmode" id="pmA"><input type="radio" name="pm" value="A"><svg aria-hidden="true"></svg><b data-t="pmA"></b><small data-t="pmAd"></small></label>
+      <label class="pmode" id="pmB"><input type="radio" name="pm" value="B"><svg aria-hidden="true"></svg><b data-t="pmB"></b><small data-t="pmBd"></small></label>
+      <label class="pmode" id="pmC"><input type="radio" name="pm" value="C"><svg aria-hidden="true"></svg><b data-t="pmC"></b><small data-t="pmCd"></small></label>
+    </div>
+    <p id="printNote"></p>
+    <div class="prow end"><button class="btn" type="button" id="printCancel" data-t="cancel"></button><button class="btn primary" type="button" id="printGo" data-t="printGo"></button></div>
+  </div>
+</div>
+<div id="offscreen" aria-hidden="true"></div>
 <div class="toast" id="toast" hidden></div>
 <div class="modal" id="modal" hidden>
   <div class="box">
@@ -388,7 +424,7 @@ const MAP_STYLE = `
 
 const I18N = {
   ja: {
-    simple: "簡易", detail: "詳細", relief: "起伏", detailLabel: "範囲の表し方",
+    simple: "簡易", detail: "詳細", relief: "起伏図", opacity: "地形の不透明度", detailLabel: "範囲の表し方",
     prefsTitle: "都道府県（選ぶと、その都道府県に一部でもかかる地形をすべて選択）",
     prefAdded: (n, c) => `「${n}」の地形 ${c} 件を選択しました`, prefRemoved: (n) => `「${n}」の選択を解除しました`,
     title: "日本地形マップ", subtitle: "地形を選び、地名をタップすると読み上げます", pick: "地形を選ぶ", export: "画像を保存", exportShort: "保存",
@@ -399,7 +435,7 @@ const I18N = {
     saveHelp: "画像を右クリック（スマホは長押し）して保存してください。", close: "閉じる",
     credit: "出典：地球地図日本・地名集日本（国土地理院）", credit2: "国土数値情報 河川・湖沼・土地分類メッシュ（国土交通省）を加工して作成", mapLabel: "日本地形マップ",
     creditRelief: "標高：地理院タイル（標高タイル）を加工して作成",
-    srcRiver: "河道：国土数値情報（河川）", srcLake: "湖岸線：国土数値情報（湖沼）", srcArea: "範囲：国土数値情報（土地分類メッシュ）から作成",
+    srcRiver: "河道：国土数値情報（河川）", srcLake: "湖岸線：国土数値情報（湖沼）", srcArea: "範囲：国土数値情報（土地分類メッシュ）から作成", srcSnap: "範囲：学習用の概略（1 km 格子に合わせて調整）",
     srcGsi: "位置：国土地理院「地名集日本」", srcRough: "位置・範囲：学習用の概略",
     noGroups: "グループはまだありません。地形を選んで名前を付けると保存できます", applyGroup: "このグループを表示",
     delGroup: (n) => `グループ「${n}」を削除`, applied: (n) => `「${n}」を表示しました`, saved: (n) => `「${n}」を保存しました`,
@@ -413,13 +449,20 @@ const I18N = {
     shareCopied: "リンクをコピーしました", shareHelp: "このリンクをコピーして共有してください",
     needOne: "地形を1つ以上選んでください", reliefNo: "起伏表示ではテスト・白地図は使えません。「簡易」か「詳細」に切り替えてください",
     answerKey: "解答", blankSaved: "白地図と解答を保存しました",
+    printTitle: "白地図の出力", printPaper: "用紙", a4p: "A4 縦", a4l: "A4 横", pScreen: "画面のまま",
+    pmA: "A：PDF 2 ページ", pmAd: "1 ページ目に地図、2 ページ目に解答。両面印刷すると解答が裏面に来ます。",
+    pmB: "B：画像 2 枚", pmBd: "地図と解答を別々の PNG 画像で保存します。",
+    pmC: "C：1 枚にまとめる", pmCd: "縦は上に地図・下に解答、横は左に地図・右に解答。点線で折る・切ると解答を隠せます。",
+    screenOnlyB: "「画面のまま」は今見えている範囲をそのまま保存します（B のみ）。", cancel: "キャンセル", printGo: "出力",
+    sheetTitle: "白地図", nameF: "名前", dateF: "日付", scoreF: "点数", schMap: "地図", schKey: "解答", schFront: "1 枚目（表）", schBack: "2 枚目（裏）", schImg: "画像",
+    pdfMaking: "PDF を作成しています…", pdfFail: "PDF を作れませんでした。ネット接続を確認するか、B を選んでください",
     quizTitle: "テスト中", quizNeed: "テストには地形を2つ以上選んでください", quizProgress: (a, t) => `回答 ${a}/${t}`,
     quizCheck: "答え合わせ", quizSave: "画像を保存", quizExit: "終了", quizExitConfirm: "もう一度押すと終了",
     quizScore: (s, c, t) => `${s}点（${c}/${t} 正解）`, quizPick: "地名を選ぶ", quizClear: "空欄に戻す",
     quizEmpty: "残りの地名はありません。入れ替えるには、使った欄を空欄に戻してください", quizDone: "答え合わせ済みです",
   },
   zh: {
-    simple: "簡易", detail: "精緻", relief: "起伏", detailLabel: "範圍顯示方式",
+    simple: "簡易", detail: "精緻", relief: "起伏圖", opacity: "地形不透明度", detailLabel: "範圍顯示方式",
     prefsTitle: "都道府縣（選取後，只要有一部分在該縣內的地形都會一起勾選）",
     prefAdded: (n, c) => `已勾選「${n}」的 ${c} 個地形`, prefRemoved: (n) => `已取消「${n}」`,
     title: "日本地形地圖", subtitle: "勾選地形，點地名可聽讀音", pick: "選擇地形", export: "輸出圖片", exportShort: "輸出",
@@ -430,7 +473,7 @@ const I18N = {
     saveHelp: "在圖片上按右鍵（手機長按）即可另存。", close: "關閉",
     credit: "出處：地球地圖日本・地名集日本（國土地理院）", credit2: "國土數值情報 河川・湖沼・土地分類網格（國土交通省）經加工製作", mapLabel: "日本地形地圖",
     creditRelief: "標高：地理院圖磚（標高圖磚）經加工製作",
-    srcRiver: "河道：國土數值情報（河川）", srcLake: "湖岸線：國土數值情報（湖沼）", srcArea: "範圍：依國土數值情報（土地分類網格）製作",
+    srcRiver: "河道：國土數值情報（河川）", srcLake: "湖岸線：國土數值情報（湖沼）", srcArea: "範圍：依國土數值情報（土地分類網格）製作", srcSnap: "範圍：學習用概略值（依 1 km 網格調整）",
     srcGsi: "位置：國土地理院「地名集日本」", srcRough: "位置・範圍：學習用概略值",
     noGroups: "尚無群組，勾選後輸入名稱即可儲存", applyGroup: "套用這個群組",
     delGroup: (n) => `刪除群組 ${n}`, applied: (n) => `已套用「${n}」`, saved: (n) => `已儲存「${n}」`,
@@ -444,6 +487,13 @@ const I18N = {
     shareCopied: "已複製連結", shareHelp: "請複製這個連結分享",
     needOne: "請至少勾選一個地形", reliefNo: "起伏模式下無法使用測驗與白地圖，請切換到「簡易」或「精緻」",
     answerKey: "解答", blankSaved: "已輸出白地圖與解答",
+    printTitle: "輸出白地圖", printPaper: "紙張", a4p: "A4 直式", a4l: "A4 橫式", pScreen: "畫面範圍",
+    pmA: "A：PDF 兩頁", pmAd: "第 1 頁是地圖、第 2 頁是解答。雙面列印時解答在背面。",
+    pmB: "B：兩張圖片", pmBd: "地圖和解答分別存成 PNG 圖片。",
+    pmC: "C：合成一張", pmCd: "直式為上方地圖、下方解答；橫式為左方地圖、右方解答。沿虛線折起或剪開即可遮住解答。",
+    screenOnlyB: "「畫面範圍」直接輸出目前看到的地圖（只有 B）。", cancel: "取消", printGo: "輸出",
+    sheetTitle: "白地圖", nameF: "姓名", dateF: "日期", scoreF: "分數", schMap: "地圖", schKey: "解答", schFront: "第 1 張（正面）", schBack: "第 2 張（背面）", schImg: "圖片",
+    pdfMaking: "正在製作 PDF…", pdfFail: "無法製作 PDF，請確認網路連線或改選 B",
     quizTitle: "測驗中", quizNeed: "測驗至少需要勾選兩個地形", quizProgress: (a, t) => `已作答 ${a}/${t}`,
     quizCheck: "對答案", quizSave: "輸出圖片", quizExit: "退出", quizExitConfirm: "再按一次退出",
     quizScore: (s, c, t) => `${s} 分（答對 ${c}/${t}）`, quizPick: "選擇地名", quizClear: "清除此格",
@@ -503,6 +553,8 @@ const realOf = (it) => {
 for (const g of Object.values(REAL.lakes)) rewind(g);
 const PRECISE = new Map(topojson.feature(PTOPO, PTOPO.objects.precise).features.map((f) => [f.properties.n, rewind(f.geometry)]));
 const PRECISE_CATS = new Set(["range", "plain", "plateau", "basin"]);
+// 官方格子太少、改用手繪範圍對齊格子的地形（三次盆地、蒜山高原等）
+const PRECISE_SNAP = new Set(PTOPO.objects.precise.geometries.filter((g) => g.properties.s).map((g) => g.properties.n));
 const preciseOf = (it) => (state.mode === "detail" && PRECISE_CATS.has(it.cat.id) && PRECISE.get(it.n)) || null;
 // 同類相鄰的範圍分到不同深淺（貪婪著色），避免整片同色分不出界線
 const SHADE = (() => {
@@ -545,8 +597,13 @@ function labelPoint(it, geom) {
 }
 
 // ---------- 狀態 ----------
-const DEFAULT_SEL = [...CATS[0].items, ...CATS[3].items, ...CATS[6].items].filter((i) => i.lv === 1).map((i) => i.id);
-const MODES = ["simple", "detail", "relief"];
+// 預設勾選（第一次開啟時）：手機只勾 8 條主要山脈；電腦再加上各類別的代表
+const DEF_RANGES = ["日高山脈", "奥羽山脈", "飛驒山脈", "木曽山脈", "赤石山脈", "中国山地", "四国山地", "九州山地"].map((n) => "range:" + n);
+const DEF_MORE = ["volcano:富士山", "volcano:阿蘇山", "volcano:桜島", "plain:石狩平野", "plain:関東平野", "plain:濃尾平野", "plain:大阪平野", "plain:筑紫平野",
+  "river:石狩川", "river:信濃川", "river:利根川", "lake:琵琶湖"];
+const DEFAULT_SEL = window.innerWidth <= 640 ? DEF_RANGES : [...DEF_RANGES, ...DEF_MORE];
+const MODES = ["simple", "detail"];
+const oldMode = LS.get("mode", "");
 const state = {
   sel: new Set((LS.get("sel", null) || DEFAULT_SEL).filter((id) => ITEM.has(id))),
   cat: LS.get("cat", CATS[0].id),
@@ -556,45 +613,63 @@ const state = {
   lv1: LS.get("lv1", true),
   lv2: LS.get("lv2", true),
   lang: LS.get("lang", "ja") === "zh" ? "zh" : "ja",
-  mode: MODES.includes(LS.get("mode", "")) ? LS.get("mode", "") : (LS.get("detail", false) === true ? "detail" : "simple"),
+  // 舊版的「起伏」是第三種模式，改為獨立開關後轉成「詳細＋起伏圖」
+  mode: oldMode === "relief" ? "detail" : MODES.includes(oldMode) ? oldMode : (LS.get("detail", false) === true ? "detail" : "simple"),
+  relief: oldMode === "relief" || LS.get("relief", false) === true,
+  opacity: +LS.get("opacity", 50),
   prefs: new Set(LS.get("prefs", [])),
   found: null,
 };
-if (!RELIEF && state.mode === "relief") state.mode = "simple";
+if (!RELIEF) state.relief = false;
 const T = (k, ...a) => { const v = I18N[state.lang][k]; return typeof v === "function" ? v(...a) : v; };
 if (!CATS.some((c) => c.id === state.cat)) state.cat = CATS[0].id;
 let groups = LS.get("groups", []);
-const persist = () => { LS.set("sel", [...state.sel]); LS.set("cat", state.cat); LS.set("names", state.names); LS.set("kana", state.kana); LS.set("pref", state.pref); LS.set("lv1", state.lv1); LS.set("lv2", state.lv2); LS.set("lang", state.lang); LS.set("mode", state.mode); LS.set("prefs", [...state.prefs]); };
+const persist = () => { LS.set("sel", [...state.sel]); LS.set("cat", state.cat); LS.set("names", state.names); LS.set("kana", state.kana); LS.set("pref", state.pref); LS.set("lv1", state.lv1); LS.set("lv2", state.lv2); LS.set("lang", state.lang); LS.set("mode", state.mode); LS.set("relief", state.relief); LS.set("opacity", state.opacity); LS.set("prefs", [...state.prefs]); };
 // 只勾「主要」或「次要」其中一個時，只顯示並操作該等級的地形
 const shown = (it) => (it.lv === 1 ? state.lv1 : state.lv2);
 const shownItems = (cat) => cat.items.filter(shown);
 
-// ---------- 分享連結：勾選內容編碼在網址 #s1.xxxx ----------
+// ---------- 分享連結：勾選內容編碼在網址 #s2.xxxx ----------
+// s2：依每個地形的永久編號（terrain.js 的 i）編碼，日後增刪、調整清單順序都不影響舊連結。
+// s1：舊版依清單順序編碼；當時第 k 個地形的永久編號正好是 k+1，所以照編號解碼即可。
 const b64u = { enc: (bytes) => btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""),
   dec: (s) => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0)) };
+const BY_ID = new Map(ITEM_LIST.map((it) => [it.i, it]));
+const MAX_ID = Math.max(...ITEM_LIST.map((it) => it.i));
 function encodeState() {
   const bits = (n) => new Uint8Array(Math.ceil(n / 8));
-  const sel = bits(ITEM_LIST.length); ITEM_LIST.forEach((it, i) => { if (state.sel.has(it.id)) sel[i >> 3] |= 1 << (i & 7); });
+  const sel = bits(MAX_ID + 1); for (const id of state.sel) { const n = ITEM.get(id).i; sel[n >> 3] |= 1 << (n & 7); }
   const pf = bits(48); for (const id of state.prefs) pf[id >> 3] |= 1 << (id & 7);
-  const flags = (state.lang === "zh") | (MODES.indexOf(state.mode) << 1) | (state.lv1 << 3) | (state.lv2 << 4) | (state.names << 5) | (state.kana << 6) | (state.pref << 7);
-  return "s1." + b64u.enc([flags, ...pf, ...sel]);
+  const flags = (state.lang === "zh") | (state.mode === "detail") << 1 | (state.lv1 << 3) | (state.lv2 << 4) | (state.names << 5) | (state.kana << 6) | (state.pref << 7);
+  const flags2 = (state.relief ? 1 : 0) | (Math.round(state.opacity / 5) << 1);
+  return "s2." + b64u.enc([flags, flags2, ...pf, ...sel]);
 }
 function decodeState(token) {
   try {
-    const b = b64u.dec(token.slice(3)), f = b[0];
+    const v = token.slice(0, 3), b = b64u.dec(token.slice(3)), f = b[0];
+    const f2 = v === "s2." ? b[1] : 0, off = v === "s2." ? 2 : 1;
     const sel = new Set(), prefs = new Set();
-    for (let id = 1; id <= 47; id++) if (b[1 + (id >> 3)] & (1 << (id & 7))) prefs.add(id);
-    ITEM_LIST.forEach((it, i) => { if (b[7 + (i >> 3)] & (1 << (i & 7))) sel.add(it.id); });
-    Object.assign(state, { lang: f & 1 ? "zh" : "ja", mode: MODES[(f >> 1) & 3] || "simple", lv1: !!(f & 8), lv2: !!(f & 16), names: !!(f & 32), kana: !!(f & 64), pref: !!(f & 128), sel, prefs });
+    for (let id = 1; id <= 47; id++) if (b[off + (id >> 3)] & (1 << (id & 7))) prefs.add(id);
+    const base = off + 6;
+    for (let n = 0; n < (b.length - base) * 8; n++) {
+      if (!(b[base + (n >> 3)] & (1 << (n & 7)))) continue;
+      const it = BY_ID.get(v === "s2." ? n : n + 1);
+      if (it) sel.add(it.id);
+    }
+    // s1 的模式欄位：0 簡易、1 詳細、2 起伏（起伏改為獨立開關）
+    const m = (f >> 1) & 3;
+    Object.assign(state, { lang: f & 1 ? "zh" : "ja", lv1: !!(f & 8), lv2: !!(f & 16), names: !!(f & 32), kana: !!(f & 64), pref: !!(f & 128), sel, prefs });
+    if (v === "s2.") { state.mode = m & 1 ? "detail" : "simple"; state.relief = !!(f2 & 1); state.opacity = Math.min(100, (f2 >> 1) * 5); }
+    else { state.mode = m === 1 || m === 2 ? "detail" : "simple"; state.relief = m === 2; }
     if (!state.lv1 && !state.lv2) state.lv1 = true;
-    if (!RELIEF && state.mode === "relief") state.mode = "simple";
+    if (!RELIEF) state.relief = false;
     persist();
   } catch { /* 網址壞掉時忽略，沿用原本的狀態 */ }
 }
-if (location.hash.startsWith("#s1.")) decodeState(location.hash.slice(1));
+if (/^#s[12]\./.test(location.hash)) decodeState(location.hash.slice(1));
 
 // ---------- 地圖 ----------
-const svg = d3.select("#map");
+let svg = d3.select("#map"); // 輸出 A4 版面時會暫時換成畫面外的 SVG
 const wrap = document.getElementById("mapWrap");
 const land = topojson.merge(TOPO, TOPO.objects.japan.geometries);
 const prefMesh = topojson.mesh(TOPO, TOPO.objects.japan, (a, b) => a !== b);
@@ -637,11 +712,14 @@ function declutter() {
   for (const i of order) {
     const l = labels[i];
     const cs = candidates(l);
-    const free = cs.filter((c) => !kept.some((k) => hitRect(c.r, k)));
+    let free = cs.filter((c) => !kept.some((k) => hitRect(c.r, k)));
     let pick = null;
     if (cs.length === 1) pick = free[0];
     else {
-      // 優先選不蓋到其他範圍的位置；都會蓋到時選蓋得最少的
+      // 優先選完全在畫面內的位置，其次不蓋到其他範圍；都會蓋到時選蓋得最少的
+      const vis = free.filter((c) => inView(c.r));
+      // 沒有完全在畫面內的空位時先隱藏（放大後再顯示），避免地名被切掉一半
+      if (vis.length) free = vis; else if (allowHide) free = [];
       let bestN = Infinity;
       for (const c of free.length ? free : cs) {
         const n = coverOthers(l, c.r);
@@ -660,9 +738,10 @@ function declutter() {
   $("dcHint").hidden = !hidden;
 }
 
-function buildBase() {
-  W = wrap.clientWidth; H = wrap.clientHeight;
-  projection = d3.geoMercator().fitExtent([[24, 24], [W - 24, H - 24]], FIT);
+// opt：{w, h, fit, offscreen}；offscreen＝A4 版面用的畫面外 SVG（不綁縮放、不畫出處，出處改放在頁尾）
+function buildBase(opt = {}) {
+  W = opt.w || wrap.clientWidth; H = opt.h || wrap.clientHeight;
+  projection = d3.geoMercator().fitExtent([[24, 24], [W - 24, H - 24]], opt.fit || FIT);
   path = d3.geoPath(projection);
   svg.selectAll("*").remove();
   svg.attr("viewBox", `0 0 ${W} ${H}`).attr("width", W).attr("height", H);
@@ -689,7 +768,10 @@ function buildBase() {
   labelG = svg.append("g").attr("id", "labels");
   leaderG = labelG.append("g").attr("id", "leaders");
   svg.append("g").attr("id", "legend");
+  if (opt.offscreen) return;
   const cfs = W < 500 ? 8.5 : 10;
+  svg.append("text").attr("class", "credit credit3").attr("x", W - 8).attr("y", H - 8 - cfs * 2.7).attr("text-anchor", "end")
+    .attr("font-size", cfs).text("");
   svg.append("text").attr("class", "credit").attr("x", W - 8).attr("y", H - 8 - cfs * 1.35).attr("text-anchor", "end")
     .attr("font-size", cfs).text(T("credit"));
   svg.append("text").attr("class", "credit credit2").attr("x", W - 8).attr("y", H - 8).attr("text-anchor", "end")
@@ -703,10 +785,16 @@ function pxPerKm(lonlat) {
   return Math.hypot(b[0] - a[0], b[1] - a[1]) / 111.32;
 }
 
+// 起伏圖開啟時，地形範圍（面、帶、湖）依滑桿調整不透明度；河川線、縣界、地名不受影響
+function applyOpacity() {
+  if (!zoomG) return;
+  const op = state.relief && RELIEF ? state.opacity / 100 : 1;
+  for (const id of ["#areas", "#bands", "#lakes"]) zoomG.select(id).attr("opacity", op);
+}
 // 起伏圖的標高圖例（畫在 SVG 裡，輸出圖片時一起帶出）
 function drawLegend() {
   const g = svg.select("#legend"); g.selectAll("*").remove();
-  if (state.mode !== "relief" || !RELIEF) return;
+  if (!state.relief || !RELIEF) return;
   const stops = RELIEF.stops, x = 12, y0 = H - 80 - stops.length * 14, w = 14, h = 14;
   g.append("rect").attr("x", x - 6).attr("y", y0 - 22).attr("width", 92).attr("height", stops.length * h + 30)
     .attr("rx", 6).attr("fill", "#fff").attr("fill-opacity", .85);
@@ -719,11 +807,12 @@ function drawLegend() {
 
 function drawFeatures() {
   if (!zoomG) return;
-  const relief = state.mode === "relief";
+  const relief = !!(state.relief && RELIEF);
   const areas = zoomG.select("#areas"), bands = zoomG.select("#bands"), lines = zoomG.select("#lines"), lakes = zoomG.select("#lakes");
   [areas, bands, lines, lakes].forEach((g) => g.selectAll("*").remove());
   zoomG.select("#relief").attr("display", relief ? null : "none");
-  svg.select(".credit2").text(T(relief ? "creditRelief" : "credit2"));
+  applyOpacity();
+  svg.select(".credit3").text(relief ? T("creditRelief") : "");
   const el = svg.node();
   el.classList.toggle("nonames", !state.names && !quiz.on && !blankMode);
   el.classList.toggle("nokana", !state.kana || quiz.on || blankMode);
@@ -737,8 +826,6 @@ function drawFeatures() {
   leaderG = labelG.append("g").attr("id", "leaders");
   labels = []; currents = []; obstacles = [];
   drawLegend();
-  // 起伏模式：只顯示起伏圖與縣界，地形與地名不畫（勾選內容保留）
-  if (relief) { $("dcHint").hidden = true; return; }
   const entries = [];
   for (const cat of CATS) {
     for (const it of cat.items) {
@@ -867,7 +954,7 @@ function polylabel(rings, precision = 0.5) {
 }
 
 function srcKey(it) {
-  if (preciseOf(it)) return "srcArea";
+  if (preciseOf(it)) return PRECISE_SNAP.has(it.n) ? "srcSnap" : "srcArea";
   if (realOf(it)) return { river: "srcRiver", lake: "srcLake" }[it.cat.kind];
   return it.src === "gsi" ? "srcGsi" : "srcRough";
 }
@@ -949,7 +1036,8 @@ function addLabel(it, cat, lonlat, mode) {
   }
   lg.attr("transform", `translate(${ox},${oy})`);
   const bb = lg.node().getBBox();
-  const l = { g, p, lv: it.lv, key: "c", bb: { x: bb.x + ox, y: bb.y + oy, w: bb.width, h: bb.height } };
+  // 沒有符號的地名（範圍、河川、海域）在畫面邊緣時可往內移，避免被切掉；有符號的點狀地形不移
+  const l = { g, p, lv: it.lv, key: "c", clamp: !["volcano", "peak", "dot"].includes(k), bb: { x: bb.x + ox, y: bb.y + oy, w: bb.width, h: bb.height } };
   labels.push(l);
   return l;
 }
@@ -958,14 +1046,21 @@ function addLabel(it, cat, lonlat, mode) {
 function candidates(l) {
   const t = transform, bb = l.bb, gap = 3;
   const at = (key, x0, y0) => ({ key, r: { x0, y0, x1: x0 + bb.w, y1: y0 + bb.h } });
-  const center = () => at("c", t.applyX(l.p[0]) + bb.x, t.applyY(l.p[1]) + bb.y);
+  const center = () => {
+    let x0 = t.applyX(l.p[0]) + bb.x, y0 = t.applyY(l.p[1]) + bb.y;
+    const ax = t.applyX(l.p[0]), ay = t.applyY(l.p[1]);
+    if (l.clamp && ax >= 0 && ax <= W && ay >= 0 && ay <= H) {
+      x0 = Math.max(2, Math.min(W - 2 - bb.w, x0)); y0 = Math.max(2, Math.min(H - 2 - bb.h, y0));
+    }
+    return at("c", x0, y0);
+  };
   if (l.polys) {
     const c = center();
     if (rectInside(l.polys, c.r)) return [c];
     // 放不進去：在錨點周圍 8 個方向、3 種距離找位置，之後用引線連回錨點
     const ax = t.applyX(l.p[0]), ay = t.applyY(l.p[1]), out = [];
     const dirs = [[1, 0], [-1, 0], [0, -1], [0, 1], [1, -1], [-1, -1], [1, 1], [-1, 1]];
-    for (const d of [10, 26, 46]) dirs.forEach(([ux, uy], i) => {
+    for (const d of [8, 17, 26]) dirs.forEach(([ux, uy], i) => {
       const cx = ax + ux * (bb.w / 2 + d), cy = ay + uy * (bb.h / 2 + d * 0.8);
       out.push(at("o" + d + "_" + i, cx - bb.w / 2, cy - bb.h / 2));
     });
@@ -992,7 +1087,8 @@ function samples(r) {
     out.push([(r.x0 + (r.x1 - r.x0) * fx - t.x) / t.k, (r.y0 + (r.y1 - r.y0) * fy - t.y) / t.k]);
   return out;
 }
-const rectInside = (polys, r) => samples(r).every(([x, y]) => inPolys(polys, x, y));
+const rectInside = (polys, r) => samples(r).filter(([x, y]) => inPolys(polys, x, y)).length >= 7;
+const inView = (r) => r.x0 >= 2 && r.y0 >= 2 && r.x1 <= W - 2 && r.y1 <= H - 2;
 // 地名蓋住「其他」範圍的程度（取樣點數）
 function coverOthers(l, r) {
   const pts = samples(r);
@@ -1322,7 +1418,7 @@ $("groupForm").onsubmit = (e) => {
 // ---------- 輸出圖片 ----------
 const downloadsP = cap("downloads");
 const stamp = () => { const d = new Date(), pad = (n) => String(n).padStart(2, "0"); return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}`; };
-async function svgToBlob(node, w, h) {
+async function svgToBlob(node, w, h, scale = 2, type = "image/png") {
   const clone = node.cloneNode(true);
   clone.querySelectorAll("title").forEach((t) => t.remove());
   clone.querySelectorAll(".speaking").forEach((t) => t.classList.remove("speaking"));
@@ -1331,10 +1427,11 @@ async function svgToBlob(node, w, h) {
   const img = new Image();
   img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(xml);
   await img.decode();
-  const scale = 2, cv = document.createElement("canvas");
+  const cv = document.createElement("canvas");
   cv.width = w * scale; cv.height = h * scale;
   const ctx = cv.getContext("2d"); ctx.scale(scale, scale); ctx.drawImage(img, 0, 0, w, h);
-  return new Promise((r) => cv.toBlob(r, "image/png"));
+  if (type === "image/jpeg") { ctx.globalCompositeOperation = "destination-over"; ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, w, h); }
+  return new Promise((r) => cv.toBlob(r, type, 0.9));
 }
 // 交付檔案：一般網站直接下載；Claude 版走 downloads；都不行時顯示圖片讓使用者長按另存
 async function deliver(files) {
@@ -1375,43 +1472,233 @@ async function exportPNG() {
 }
 $("btnExport").onclick = exportPNG;
 
-// ---------- 白地圖＋解答 ----------
-function answerKeySvg(list) {
-  // 解答圖：圓圈編號＋地名（日文版附讀音），依數量分成多欄
-  const rows = Math.min(list.length, 30), cols = Math.ceil(list.length / rows), colW = 300, rowH = 26, top = 54;
-  const w = Math.max(360, cols * colW + 40), h = top + rows * rowH + 30;
+// ---------- 白地圖＋解答（列印版面） ----------
+// 解答清單：圓圈編號＋地名（日文版附讀音），在指定方框內自動分欄
+function drawKeyList(sel, list, x, y, w, h) {
+  const n = list.length;
+  let rowH = 24, fs = 13;
+  let rows = Math.max(1, Math.floor(h / rowH)), cols = Math.ceil(n / rows);
+  if (w / cols < 210) { rowH = 19; fs = 11; rows = Math.max(1, Math.floor(h / rowH)); cols = Math.ceil(n / rows); }
+  rows = Math.ceil(n / cols);
+  const colW = w / cols;
+  list.forEach(({ n: num, it }, i) => {
+    const c = Math.floor(i / rows), r = i % rows, cx = x + c * colW, cy = y + r * rowH;
+    const rr = fs * 0.72;
+    sel.append("circle").attr("cx", cx + rr).attr("cy", cy + rr).attr("r", rr).attr("fill", "#fff").attr("stroke", "#1e2a23").attr("stroke-width", 1.2);
+    sel.append("text").attr("x", cx + rr).attr("y", cy + rr + fs * 0.32).attr("text-anchor", "middle")
+      .attr("font-size", String(num).length > 2 ? fs * 0.62 : fs * 0.78).attr("font-weight", 700).text(num);
+    const extra = state.lang === "ja" ? `（${readingOf(it)}）` : `（${it.n}）`;
+    sel.append("text").attr("x", cx + rr * 2 + 6).attr("y", cy + rr + fs * 0.36).attr("font-size", fs).text(nameOf(it) + extra);
+  });
+}
+function newSvg(w, h) {
   const ns = "http://www.w3.org/2000/svg", s = document.createElementNS(ns, "svg");
   const sel = d3.select(s).attr("xmlns", ns).attr("viewBox", `0 0 ${w} ${h}`).attr("width", w).attr("height", h);
   sel.append("style").text('text{font-family:"Hiragino Sans","Yu Gothic","Meiryo","Noto Sans JP",sans-serif;fill:#1e2a23}');
   sel.append("rect").attr("width", w).attr("height", h).attr("fill", "#fff");
-  sel.append("text").attr("x", 20).attr("y", 34).attr("font-size", 20).attr("font-weight", 700).text(`${T("title")}　${T("answerKey")}`);
-  list.forEach(({ n, it }, i) => {
-    const c = Math.floor(i / rows), r = i % rows, x = 20 + c * colW, y = top + r * rowH;
-    sel.append("circle").attr("cx", x + 10).attr("cy", y + 8).attr("r", 10).attr("fill", "#fff").attr("stroke", "#1e2a23").attr("stroke-width", 1.4);
-    sel.append("text").attr("x", x + 10).attr("y", y + 12).attr("text-anchor", "middle").attr("font-size", String(n).length > 2 ? 9 : 11).attr("font-weight", 700).text(n);
-    const extra = state.lang === "ja" ? `（${readingOf(it)}）` : `（${it.n}）`;
-    sel.append("text").attr("x", x + 28).attr("y", y + 13).attr("font-size", 14).text(nameOf(it) + extra);
-  });
-  return { node: s, w, h };
+  return { node: s, sel };
 }
-async function exportBlank() {
-  if (state.mode === "relief") { toast(T("reliefNo")); return; }
-  if (!labels.length) { toast(T("needOne")); return; }
-  const btn = $("btnBlank"); btn.disabled = true;
+// 螢幕用的解答圖（「画面のまま」）
+function answerKeySvg(list) {
+  const rows = Math.min(list.length, 30), cols = Math.ceil(list.length / rows), colW = 300, rowH = 26, top = 54;
+  const w = Math.max(360, cols * colW + 40), h = top + rows * rowH + 30;
+  const { node, sel } = newSvg(w, h);
+  sel.append("text").attr("x", 20).attr("y", 34).attr("font-size", 20).attr("font-weight", 700).text(`${T("title")}　${T("answerKey")}`);
+  drawKeyList(sel, list, 20, top, w - 40, h - top - 20);
+  return { node, w, h };
+}
+
+// 畫面外繪製：把目前的地圖狀態換成 A4 用的尺寸與投影，以白地圖模式畫一次，再還原
+function renderOffscreenMap(w, h) {
+  const fc = { type: "FeatureCollection", features: [] };
+  for (const it of ITEM_LIST) {
+    if (!state.sel.has(it.id) || !shown(it)) continue;
+    const g = geomOf(it) || (it.c ? { type: "Point", coordinates: it.c } : null);
+    if (g) fc.features.push({ type: "Feature", geometry: g });
+  }
+  const saved = { svg, W, H, projection, path, zoomG, labelG, leaderG, transform, labels, currents, obstacles };
+  const host = $("offscreen"); host.textContent = "";
+  host.style.width = w + "px"; host.style.height = h + "px";
+  const ns = "http://www.w3.org/2000/svg", node = document.createElementNS(ns, "svg");
+  node.setAttribute("xmlns", ns); host.appendChild(node);
   try {
+    svg = d3.select(node); transform = d3.zoomIdentity;
+    // 投影範圍以勾選的地形為準（buildBase 會留 24px 邊界給圈號與引線）
+    buildBase({ w, h, fit: fc.features.length ? fc : FIT, offscreen: true });
+    applyOptions();
     blankMode = true; drawFeatures();
-    const mapBlob = await svgToBlob(svg.node(), W, H);
-    const key = answerKeySvg(blankKey);
-    blankMode = false; drawFeatures();
-    const keyBlob = await svgToBlob(key.node, key.w, key.h);
-    const ts = stamp();
-    const r = await deliver([[mapBlob, `日本地形_白地図_${ts}.png`], [keyBlob, `日本地形_解答_${ts}.png`]]);
+    return { node, key: blankKey.slice() };
+  } finally {
+    blankMode = false;
+    ({ svg, W, H, projection, path, zoomG, labelG, leaderG, transform, labels, currents, obstacles } = saved);
+  }
+}
+// A4 頁面（CSS px，96 dpi）；輸出時放大 2.5 倍約 240 dpi
+const A4 = { p: [794, 1123], l: [1123, 794] };
+function sheetHeader(sel, w, m, isKey) {
+  sel.append("text").attr("x", m).attr("y", m + 20).attr("font-size", 20).attr("font-weight", 700)
+    .text(`${T("title")}　${T(isKey ? "answerKey" : "sheetTitle")}`);
+  if (isKey) return;
+  // 名前・日付・点数欄
+  const fields = [[T("nameF"), 150], [T("dateF"), 100], [T("scoreF"), 70]];
+  let x = w - m;
+  for (let i = fields.length - 1; i >= 0; i--) {
+    const [label, len] = fields[i];
+    x -= len;
+    sel.append("line").attr("x1", x).attr("x2", x + len - 8).attr("y1", m + 24).attr("y2", m + 24).attr("stroke", "#1e2a23");
+    if (i === 2) sel.append("text").attr("x", x + len - 10).attr("y", m + 20).attr("font-size", 11).attr("text-anchor", "end").text("/100");
+    sel.append("text").attr("x", x - 4).attr("y", m + 20).attr("font-size", 12).attr("text-anchor", "end").text(label);
+    x -= 44;
+  }
+}
+function sheetFooter(sel, w, h, m) {
+  const t = [T("credit"), T("credit2")];
+  if (state.relief && RELIEF) t.unshift(T("creditRelief"));
+  t.forEach((s, i) => sel.append("text").attr("x", w - m).attr("y", h - m / 2 - (t.length - 1 - i) * 12).attr("text-anchor", "end").attr("font-size", 9).attr("fill", "#5a6b62").text(s));
+}
+function placeMap(sel, mapNode, x, y) {
+  const n = mapNode.cloneNode(true);
+  n.setAttribute("x", x); n.setAttribute("y", y);
+  sel.node().appendChild(n);
+  sel.append("rect").attr("x", x).attr("y", y).attr("width", +n.getAttribute("width")).attr("height", +n.getAttribute("height"))
+    .attr("fill", "none").attr("stroke", "#9aa59a");
+}
+// 版面：A＝地圖頁＋解答頁（PDF 兩頁）、B＝同樣兩頁但存成兩張 PNG、C＝一頁上下（橫向為左右）分開
+function buildSheets(mode, orient) {
+  const [w, h] = A4[orient], m = 36, top = m + 40, foot = 34;
+  if (mode === "C") {
+    const page = newSvg(w, h);
+    sheetHeader(page.sel, w, m, false);
+    const portrait = orient === "p";
+    const mapW = portrait ? w - 2 * m : Math.round((w - 2 * m) * 0.64);
+    const mapH = portrait ? Math.round((h - top - foot - m) * 0.64) : h - top - foot;
+    const map = renderOffscreenMap(mapW, mapH);
+    placeMap(page.sel, map.node, m, top);
+    // 折線／剪線＋解答區
+    const kx = portrait ? m : m + mapW + 24, ky = portrait ? top + mapH + 26 : top;
+    const kw = portrait ? w - 2 * m : w - m - kx, kh = portrait ? h - foot - ky - 8 : mapH;
+    if (portrait) page.sel.append("line").attr("x1", m).attr("x2", w - m).attr("y1", ky - 13).attr("y2", ky - 13).attr("stroke", "#888").attr("stroke-dasharray", "6 4");
+    else page.sel.append("line").attr("x1", kx - 12).attr("x2", kx - 12).attr("y1", top).attr("y2", top + mapH).attr("stroke", "#888").attr("stroke-dasharray", "6 4");
+    page.sel.append("text").attr("x", kx).attr("y", ky + 4).attr("font-size", 13).attr("font-weight", 700).text(T("answerKey"));
+    drawKeyList(page.sel, map.key, kx, ky + 14, kw, kh - 14);
+    sheetFooter(page.sel, w, h, m);
+    return [{ node: page.node, w, h }];
+  }
+  const mapPage = newSvg(w, h);
+  sheetHeader(mapPage.sel, w, m, false);
+  const map = renderOffscreenMap(w - 2 * m, h - top - foot - m / 2);
+  placeMap(mapPage.sel, map.node, m, top);
+  sheetFooter(mapPage.sel, w, h, m);
+  const keyPage = newSvg(w, h);
+  sheetHeader(keyPage.sel, w, m, true);
+  drawKeyList(keyPage.sel, map.key, m, top, w - 2 * m, h - top - foot);
+  sheetFooter(keyPage.sel, w, h, m);
+  return [{ node: mapPage.node, w, h }, { node: keyPage.node, w, h }];
+}
+// jsPDF：只有選 A 時才從 cdnjs 載入
+let jsPdfP = null;
+function loadJsPdf() {
+  if (window.jspdf) return Promise.resolve(window.jspdf);
+  return (jsPdfP ||= new Promise((ok, ng) => {
+    const sc = document.createElement("script");
+    sc.src = "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
+    sc.onload = () => ok(window.jspdf); sc.onerror = () => { jsPdfP = null; ng(new Error("jsPDF")); };
+    document.head.appendChild(sc);
+  }));
+}
+const blobToDataURL = (b) => new Promise((r) => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(b); });
+
+// 列印設定對話框
+const print = { orient: LS.get("printOrient", "p"), mode: LS.get("printMode", "A") };
+function drawSchematic(el, mode, orient) {
+  // 示意圖：頁面方框＋「地図／解答」的相對位置（不是實際圖的縮小）
+  const g = d3.select(el).attr("viewBox", "0 0 150 90"); g.selectAll("*").remove();
+  const pw = orient === "l" ? 50 : orient === "s" ? 50 : 38, ph = orient === "l" ? 36 : orient === "s" ? 32 : 52;
+  const page = (x, y, tag) => {
+    g.append("rect").attr("x", x).attr("y", y).attr("width", pw).attr("height", ph).attr("rx", 2).attr("fill", "#fff").attr("stroke", "#5c6b62");
+    if (tag) g.append("text").attr("x", x + pw / 2).attr("y", y + ph + 11).attr("text-anchor", "middle").attr("font-size", 8).attr("fill", "currentColor").text(tag);
+  };
+  const block = (x, y, bw, bh, label, fill) => {
+    g.append("rect").attr("x", x).attr("y", y).attr("width", bw).attr("height", bh).attr("fill", fill).attr("stroke", "none");
+    g.append("text").attr("x", x + bw / 2).attr("y", y + bh / 2 + 3).attr("text-anchor", "middle").attr("font-size", 8).attr("fill", "#1e2a23").text(label);
+  };
+  const y0 = 10;
+  if (mode === "C") {
+    const x = 75 - pw / 2; page(x, y0, "");
+    if (orient === "l") {
+      block(x + 3, y0 + 3, pw * 0.6 - 4, ph - 6, T("schMap"), "#cfe3c4");
+      g.append("line").attr("x1", x + pw * 0.62).attr("x2", x + pw * 0.62).attr("y1", y0 + 2).attr("y2", y0 + ph - 2).attr("stroke", "#888").attr("stroke-dasharray", "2 2");
+      block(x + pw * 0.64, y0 + 3, pw * 0.36 - 3, ph - 6, T("schKey"), "#f7e3b5");
+    } else {
+      block(x + 3, y0 + 3, pw - 6, ph * 0.6 - 4, T("schMap"), "#cfe3c4");
+      g.append("line").attr("x1", x + 2).attr("x2", x + pw - 2).attr("y1", y0 + ph * 0.62).attr("y2", y0 + ph * 0.62).attr("stroke", "#888").attr("stroke-dasharray", "2 2");
+      block(x + 3, y0 + ph * 0.64, pw - 6, ph * 0.36 - 3, T("schKey"), "#f7e3b5");
+    }
+    return;
+  }
+  const x1 = 75 - pw - 8, x2 = 75 + 8;
+  page(x1, y0, mode === "A" ? T("schFront") : T("schImg") + "1");
+  page(x2, y0, mode === "A" ? T("schBack") : T("schImg") + "2");
+  block(x1 + 3, y0 + 3, pw - 6, ph - 6, T("schMap"), "#cfe3c4");
+  block(x2 + 3, y0 + 3, pw - 6, ph - 6, T("schKey"), "#f7e3b5");
+  if (mode === "A") g.append("path").attr("d", `M${x1 + pw + 2},${y0 + ph / 2} C${75},${y0 + ph / 2 - 10} ${75},${y0 + ph / 2 - 10} ${x2 - 2},${y0 + ph / 2}`)
+    .attr("fill", "none").attr("stroke", "#888").attr("stroke-dasharray", "2 2");
+}
+function renderPrintDlg() {
+  for (const [id, o] of [["pPortrait", "p"], ["pLandscape", "l"], ["pScreen", "s"]]) $(id).setAttribute("aria-pressed", String(print.orient === o));
+  if (print.orient === "s") print.mode = "B";
+  for (const m of ["A", "B", "C"]) {
+    const card = $("pm" + m), dis = print.orient === "s" && m !== "B";
+    card.classList.toggle("on", print.mode === m); card.classList.toggle("off", dis);
+    card.querySelector("input").checked = print.mode === m; card.querySelector("input").disabled = dis;
+    drawSchematic(card.querySelector("svg"), m, print.orient);
+  }
+  $("printNote").textContent = print.orient === "s" ? T("screenOnlyB") : "";
+}
+function openPrintDlg() {
+  if (!labels.length) { toast(T("needOne")); return; }
+  setSheet(false); renderPrintDlg(); $("printDlg").hidden = false;
+}
+for (const [id, o] of [["pPortrait", "p"], ["pLandscape", "l"], ["pScreen", "s"]]) $(id).onclick = () => { print.orient = o; LS.set("printOrient", o); renderPrintDlg(); };
+for (const m of ["A", "B", "C"]) $("pm" + m).querySelector("input").onchange = () => { print.mode = m; LS.set("printMode", m); renderPrintDlg(); };
+$("printCancel").onclick = () => ($("printDlg").hidden = true);
+$("printGo").onclick = async () => {
+  const btn = $("printGo"); btn.disabled = true;
+  const ts = stamp(), base = `日本地形_白地図_${ts}`;
+  try {
+    let files;
+    if (print.orient === "s") {
+      // 畫面範圍：目前看到的地圖＋解答圖
+      blankMode = true; drawFeatures();
+      const mapBlob = await svgToBlob(svg.node(), W, H);
+      const key = answerKeySvg(blankKey);
+      blankMode = false; drawFeatures();
+      files = [[mapBlob, base + ".png"], [await svgToBlob(key.node, key.w, key.h), `日本地形_解答_${ts}.png`]];
+    } else {
+      const sheets = buildSheets(print.mode, print.orient);
+      // PDF 內嵌 JPEG（PNG 會讓檔案大好幾倍），圖片檔則用 PNG
+      const type = print.mode === "A" ? "image/jpeg" : "image/png";
+      const blobs = [];
+      for (const sh of sheets) blobs.push(await svgToBlob(sh.node, sh.w, sh.h, 2.5, type));
+      if (print.mode === "A") {
+        toast(T("pdfMaking"));
+        const { jsPDF } = await loadJsPdf();
+        const portrait = print.orient === "p", doc = new jsPDF({ orientation: portrait ? "p" : "l", unit: "mm", format: "a4" });
+        const [pw, ph] = portrait ? [210, 297] : [297, 210];
+        for (let i = 0; i < blobs.length; i++) { if (i) doc.addPage(); doc.addImage(await blobToDataURL(blobs[i]), "JPEG", 0, 0, pw, ph); }
+        files = [[doc.output("blob"), base + ".pdf"]];
+      } else if (print.mode === "B") {
+        files = [[blobs[0], base + ".png"], [blobs[1], `日本地形_解答_${ts}.png`]];
+      } else files = [[blobs[0], base + ".png"]];
+    }
+    $("printDlg").hidden = true;
+    const r = await deliver(files);
     if (r === "downloaded" || r === "saved") toast(T("blankSaved"));
   } catch (err) {
-    toast(T("exportFail") + (err && err.message ? err.message : err));
-  } finally { blankMode = false; btn.disabled = false; if (svg.node().classList) drawFeatures(); }
-}
-$("btnBlank").onclick = exportBlank;
+    toast(err && err.message === "jsPDF" ? T("pdfFail") : T("exportFail") + (err && err.message ? err.message : err));
+  } finally { blankMode = false; btn.disabled = false; $("offscreen").textContent = ""; }
+};
+$("btnBlank").onclick = openPrintDlg;
 
 // ---------- 測驗 ----------
 function quizStatus() {
@@ -1430,7 +1717,6 @@ function renderQuizBar() {
   $("qCheck").disabled = quiz.graded;
 }
 function startQuiz() {
-  if (state.mode === "relief") { toast(T("reliefNo")); return; }
   const ids = ITEM_LIST.filter((it) => state.sel.has(it.id) && shown(it)).map((it) => it.id);
   if (ids.length < 2) { toast(T("quizNeed")); return; }
   quiz.on = true; quiz.graded = false; quiz.ids = ids; quiz.answers = new Map();
@@ -1545,14 +1831,21 @@ function applyLang() {
   $("langJa").setAttribute("aria-pressed", String(L === "ja"));
   $("langZh").setAttribute("aria-pressed", String(L === "zh"));
   $("kanaOpt").hidden = L === "zh";
-  for (const [id, m] of [["mSimple", "simple"], ["mDetail", "detail"], ["mRelief", "relief"]]) $(id).setAttribute("aria-pressed", String(state.mode === m));
-  $("mRelief").hidden = !RELIEF;
-  svg.select(".credit:not(.credit2)").text(T("credit"));
+  for (const [id, m] of [["mSimple", "simple"], ["mDetail", "detail"]]) $(id).setAttribute("aria-pressed", String(state.mode === m));
+  $("reliefOpt").hidden = !RELIEF;
+  $("optRelief").checked = state.relief;
+  $("opacityOpt").hidden = !state.relief;
+  $("opacity").value = state.opacity; $("opacityVal").textContent = state.opacity + "%";
+  svg.select(".credit:not(.credit2):not(.credit3)").text(T("credit"));
   renderQuizBar();
 }
-for (const [id, m] of [["mSimple", "simple"], ["mDetail", "detail"], ["mRelief", "relief"]]) {
+for (const [id, m] of [["mSimple", "simple"], ["mDetail", "detail"]]) {
   $(id).onclick = () => { if (state.mode === m) return; state.mode = m; persist(); applyLang(); drawFeatures(); };
 }
+// 起伏圖開關：開啟時才顯示地形不透明度滑桿
+$("optRelief").onchange = (e) => { state.relief = e.target.checked; persist(); applyLang(); drawFeatures(); };
+$("opacity").oninput = (e) => { state.opacity = +e.target.value; $("opacityVal").textContent = state.opacity + "%"; applyOpacity(); };
+$("opacity").onchange = () => persist();
 for (const [id, L] of [["langJa", "ja"], ["langZh", "zh"]]) {
   $(id).onclick = () => { if (state.lang === L) return; state.lang = L; persist(); applyLang(); renderGroups(); renderPrefs(); changed(); };
 }
