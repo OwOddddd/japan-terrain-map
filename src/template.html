@@ -301,6 +301,7 @@ body.quiz #btnSheet, body.quiz #btnExport { pointer-events: none; opacity: .45; 
     <span class="lv-group" role="group" data-t-aria="levels">
       <label class="opt"><input type="checkbox" id="lvPri" checked> <span data-t="lv1"></span></label>
       <label class="opt"><input type="checkbox" id="lvExt" checked> <span data-t="lv2"></span></label>
+      <label class="opt"><input type="checkbox" id="lvExt2" checked> <span data-t="lv3"></span></label>
     </span>
     <label class="opt"><input type="checkbox" id="optNames" checked> <span data-t="names"></span></label>
     <label class="opt" id="kanaOpt"><input type="checkbox" id="optKana" checked> <span data-t="kana"></span></label>
@@ -440,7 +441,7 @@ const I18N = {
     prefsTitle: "都道府県（選ぶと、その都道府県に一部でもかかる地形をすべて選択）",
     prefAdded: (n, c) => `「${n}」の地形 ${c} 件を選択しました`, prefRemoved: (n) => `「${n}」の選択を解除しました`,
     title: "日本地形マップ", subtitle: "地形を選び、地名をタップすると読み上げます", pick: "地形を選ぶ", export: "画像を保存", exportShort: "保存",
-    done: "完了", levels: "表示する範囲", lv1: "主要", lv2: "副次", names: "地名を表示", kana: "ふりがな", pref: "県境",
+    done: "完了", levels: "表示する範囲", lv1: "主要", lv2: "副次1", lv3: "副次2", names: "地名を表示", kana: "ふりがな", pref: "県境",
     clear: "すべて解除", cats: "地形の分類", all: "すべて選択", none: "選択を解除", groups: "グループ",
     groupName: "グループ名", saveGroup: "今の選択を保存", zoomIn: "拡大", zoomOut: "縮小", zoomAll: "全体",
     note: "範囲・位置は学習用の概略です", hint: "重なる地名は非表示です。拡大すると表示されます",
@@ -452,7 +453,7 @@ const I18N = {
     noGroups: "グループはまだありません。地形を選んで名前を付けると保存できます", applyGroup: "このグループを表示",
     delGroup: (n) => `グループ「${n}」を削除`, applied: (n) => `「${n}」を表示しました`, saved: (n) => `「${n}」を保存しました`,
     updated: (n) => `「${n}」を更新しました`, needName: "グループ名を入力してください", needSel: "先に地形を選んでください",
-    localOnly: "グループはこのブラウザだけに保存されました", needLevel: "「主要」と「副次」のどちらかは選んでください",
+    localOnly: "グループはこのブラウザだけに保存されました", needLevel: "表示する範囲を 1 つ以上選んでください",
     noSpeech: "このブラウザは読み上げに対応していません", noVoice: "日本語の音声が見つかりません。端末に日本語音声を追加してください",
     downloaded: "画像をダウンロードしました", savedImg: "画像を保存しました", exportFail: "保存できませんでした：",
     legend: "標高（m）", collapse: "パネルを閉じる", expand: "≡ メニュー",
@@ -481,7 +482,7 @@ const I18N = {
     prefsTitle: "都道府縣（選取後，只要有一部分在該縣內的地形都會一起勾選）",
     prefAdded: (n, c) => `已勾選「${n}」的 ${c} 個地形`, prefRemoved: (n) => `已取消「${n}」`,
     title: "日本地形地圖", subtitle: "勾選地形，點地名可聽讀音", pick: "選擇地形", export: "輸出圖片", exportShort: "輸出",
-    done: "完成", levels: "顯示範圍", lv1: "主要", lv2: "次要", names: "顯示名稱", kana: "振假名", pref: "縣界",
+    done: "完成", levels: "顯示範圍", lv1: "主要", lv2: "次要1", lv3: "次要2", names: "顯示名稱", kana: "振假名", pref: "縣界",
     clear: "全部清除", cats: "地形分類", all: "本類全選", none: "本類取消", groups: "群組",
     groupName: "群組名稱", saveGroup: "儲存目前勾選", zoomIn: "放大", zoomOut: "縮小", zoomAll: "全域",
     note: "範圍與位置為學習用概略圖", hint: "部分地名重疊已隱藏，放大即可顯示",
@@ -493,7 +494,7 @@ const I18N = {
     noGroups: "尚無群組，勾選後輸入名稱即可儲存", applyGroup: "套用這個群組",
     delGroup: (n) => `刪除群組 ${n}`, applied: (n) => `已套用「${n}」`, saved: (n) => `已儲存「${n}」`,
     updated: (n) => `已更新「${n}」`, needName: "請輸入群組名稱", needSel: "請先勾選地形",
-    localOnly: "群組只儲存在這個瀏覽器", needLevel: "「主要」和「次要」至少要勾一個",
+    localOnly: "群組只儲存在這個瀏覽器", needLevel: "顯示範圍至少要勾一個",
     noSpeech: "這個瀏覽器不支援語音朗讀", noVoice: "找不到中文語音，請在系統安裝中文語音",
     downloaded: "圖片已下載", savedImg: "圖片已儲存", exportFail: "輸出失敗：",
     legend: "標高（m）", collapse: "收合面板", expand: "≡ 選單",
@@ -524,8 +525,9 @@ const CAT_ZH = { range: "山脈・山地", volcano: "火山", mountain: "山", p
 const ZH_NAME = { "シラス台地": "白砂台地", "四国カルスト": "四國喀斯特", "サロマ湖": "佐呂間湖", "オホーツク海": "鄂霍次克海",
   "東シナ海": "東海", "フィリピン海": "菲律賓海", "トカラ海峡": "吐噶喇海峽", "トカラ列島": "吐噶喇列島", "リマン海流": "里曼寒流",
   "相模トラフ": "相模海槽", "駿河トラフ": "駿河海槽", "南海トラフ": "南海海槽", "フォッサマグナ": "大地溝帶",
-  "黒潮（日本海流）": "黑潮（日本暖流）", "親潮（千島海流）": "親潮（千島寒流）", "対馬海流": "對馬暖流" };
-const ZH_CHAR = Object.fromEntries([..."両兩乗乘亀龜児兒剣劍剱劍国國塩鹽増增壱壹売賣奥奧対對峡峽広廣恋戀択擇曽曾来來桜櫻歩步歯齒沢澤浅淺浜濱湾灣湿濕瀬瀨焼燒状狀狭狹礼禮禅禪穂穗竜龍総總経經縄繩蔵藏讃讚豊豐軽輕辺邊関關隠隱静靜騨驒黒黑黄黃横橫徳德糸絲与與会會猪豬内內戸戶万萬予豫"]
+  "黒潮（日本海流）": "黑潮（日本暖流）", "親潮（千島海流）": "親潮（千島寒流）", "対馬海流": "對馬暖流",
+  "ニセコアンヌプリ": "二世古安努普利", "サロベツ原野": "薩羅別原野" };
+const ZH_CHAR = Object.fromEntries([..."両兩乗乘亀龜児兒剣劍剱劍国國塩鹽増增壱壹売賣奥奧対對峡峽広廣恋戀択擇曽曾来來桜櫻歩步歯齒沢澤浅淺浜濱湾灣湿濕瀬瀨焼燒状狀狭狹礼禮禅禪穂穗竜龍総總経經縄繩蔵藏讃讚豊豐軽輕辺邊関關隠隱静靜騨驒黒黑黄黃横橫徳德糸絲与與会會猪豬内內戸戶万萬予豫恵惠釈釋摂攝属屬体體氷冰条條砺礪払拂荘莊"]
   .reduce((a, c, i, arr) => (i % 2 ? a : [...a, [c, arr[i + 1]]]), []));
 const zhName = (n) => ZH_NAME[n] || [...n.replace(/ヶ/g, "").replace(/[のノ]/g, "之")].map((c) => ZH_CHAR[c] || c).join("");
 // 搜尋用：繁體 → 日文新字體（反查 ZH_CHAR）
@@ -576,9 +578,11 @@ const preciseOf = (it) => (state.mode === "detail" && PRECISE_CATS.has(it.cat.id
 // 同類相鄰的範圍分到不同深淺（貪婪著色），避免整片同色分不出界線
 const SHADE = (() => {
   const geos = PTOPO.objects.precise.geometries, nb = topojson.neighbors(geos), idx = new Map();
-  const catOf = new Map(); for (const it of ITEM.values()) catOf.set(it.n, it.cat.id);
+  const catOf = new Map(), subOf = new Map(); for (const it of ITEM.values()) { catOf.set(it.n, it.cat.id); if (it.sub) subOf.set(it.n, it.sub); }
   geos.forEach((g, i) => {
     const used = new Set(nb[i].filter((j) => idx.has(j) && catOf.get(geos[j].properties.n) === catOf.get(g.properties.n)).map((j) => idx.get(j)));
+    const sub = subOf.get(g.properties.n), pj = sub && geos.findIndex((q) => q.properties.n === sub);
+    if (sub && idx.has(pj)) used.add(idx.get(pj));
     let c = 0; while (used.has(c)) c++;
     idx.set(i, c);
   });
@@ -629,6 +633,7 @@ const state = {
   pref: LS.get("pref", true),
   lv1: LS.get("lv1", true),
   lv2: LS.get("lv2", true),
+  lv3: LS.get("lv3", LS.get("lv2", true)),
   lang: LS.get("lang", "ja") === "zh" ? "zh" : "ja",
   // 舊版的「起伏」是第三種模式，改為獨立開關後轉成「詳細＋起伏圖」
   mode: oldMode === "relief" ? "detail" : MODES.includes(oldMode) ? oldMode : (LS.get("detail", false) === true ? "detail" : "simple"),
@@ -642,9 +647,9 @@ if (!RELIEF) state.relief = "";
 const T = (k, ...a) => { const v = I18N[state.lang][k]; return typeof v === "function" ? v(...a) : v; };
 if (!CATS.some((c) => c.id === state.cat)) state.cat = CATS[0].id;
 let groups = LS.get("groups", []);
-const persist = () => { LS.set("sel", [...state.sel]); LS.set("cat", state.cat); LS.set("names", state.names); LS.set("kana", state.kana); LS.set("pref", state.pref); LS.set("lv1", state.lv1); LS.set("lv2", state.lv2); LS.set("lang", state.lang); LS.set("mode", state.mode); LS.set("relief", state.relief); LS.set("opacity", state.opacity); LS.set("prefs", [...state.prefs]); };
-// 只勾「主要」或「次要」其中一個時，只顯示並操作該等級的地形
-const shown = (it) => (it.lv === 1 ? state.lv1 : state.lv2);
+const persist = () => { LS.set("sel", [...state.sel]); LS.set("cat", state.cat); LS.set("names", state.names); LS.set("kana", state.kana); LS.set("pref", state.pref); LS.set("lv1", state.lv1); LS.set("lv2", state.lv2); LS.set("lv3", state.lv3); LS.set("lang", state.lang); LS.set("mode", state.mode); LS.set("relief", state.relief); LS.set("opacity", state.opacity); LS.set("prefs", [...state.prefs]); };
+// 只顯示並操作有勾選的等級（主要／次要1／次要2）
+const shown = (it) => state["lv" + it.lv];
 const shownItems = (cat) => cat.items.filter(shown);
 
 // ---------- 分享連結：勾選內容編碼在網址 #s2.xxxx ----------
@@ -659,7 +664,7 @@ function encodeState() {
   const sel = bits(MAX_ID + 1); for (const id of state.sel) { const n = ITEM.get(id).i; sel[n >> 3] |= 1 << (n & 7); }
   const pf = bits(48); for (const id of state.prefs) pf[id >> 3] |= 1 << (id & 7);
   const flags = (state.lang === "zh") | (state.mode === "detail") << 1 | (state.lv1 << 3) | (state.lv2 << 4) | (state.names << 5) | (state.kana << 6) | (state.pref << 7);
-  const flags2 = (state.relief ? 1 : 0) | (Math.round(state.opacity / 5) << 1) | (state.relief === "gray" ? 64 : 0);
+  const flags2 = (state.relief ? 1 : 0) | (Math.round(state.opacity / 5) << 1) | (state.relief === "gray" ? 64 : 0) | (state.lv3 !== state.lv2 ? 128 : 0);
   return "s2." + b64u.enc([flags, flags2, ...pf, ...sel]);
 }
 function decodeState(token) {
@@ -677,9 +682,11 @@ function decodeState(token) {
     // s1 的模式欄位：0 簡易、1 詳細、2 起伏（起伏改為獨立開關）
     const m = (f >> 1) & 3;
     Object.assign(state, { lang: f & 1 ? "zh" : "ja", lv1: !!(f & 8), lv2: !!(f & 16), names: !!(f & 32), kana: !!(f & 64), pref: !!(f & 128), sel, prefs });
-    if (v === "s2.") { state.mode = m & 1 ? "detail" : "simple"; state.relief = f2 & 1 ? (f2 & 64 ? "gray" : "color") : ""; state.opacity = Math.min(100, (f2 >> 1) * 5); }
+    if (v === "s2.") { state.mode = m & 1 ? "detail" : "simple"; state.relief = f2 & 1 ? (f2 & 64 ? "gray" : "color") : ""; state.opacity = Math.min(100, ((f2 >> 1) & 31) * 5); }
     else { state.mode = m === 1 || m === 2 ? "detail" : "simple"; state.relief = m === 2 ? "color" : ""; }
-    if (!state.lv1 && !state.lv2) state.lv1 = true;
+    // 次要2：flags2 第 7 位元表示與次要1 的勾選不同（舊連結沒有這一位，跟著次要1）
+    state.lv3 = f2 & 128 ? !state.lv2 : state.lv2;
+    if (!state.lv1 && !state.lv2 && !state.lv3) state.lv1 = true;
     if (!RELIEF) state.relief = "";
     persist();
   } catch { /* 網址壞掉時忽略，沿用原本的狀態 */ }
@@ -1355,10 +1362,11 @@ for (const [id, key] of [["optNames", "names"], ["optKana", "kana"], ["optPref",
   $(id).checked = state[key];
   $(id).onchange = (e) => { state[key] = e.target.checked; persist(); applyOptions(); };
 }
-for (const [id, key, other] of [["lvPri", "lv1", "lv2"], ["lvExt", "lv2", "lv1"]]) {
+const LV_BOX = [["lvPri", "lv1"], ["lvExt", "lv2"], ["lvExt2", "lv3"]];
+for (const [id, key] of LV_BOX) {
   $(id).checked = state[key];
   $(id).onchange = (e) => {
-    if (!e.target.checked && !state[other]) { e.target.checked = true; toast(T("needLevel")); return; }
+    if (!e.target.checked && LV_BOX.every(([, k]) => k === key || !state[k])) { e.target.checked = true; toast(T("needLevel")); return; }
     state[key] = e.target.checked; changed();
   };
 }
@@ -1414,7 +1422,7 @@ function renderSugg() {
 }
 function gotoItem(it) {
   // 跳到該地形的類別並加粗外框提示（不自動勾選）；被等級篩選藏起來時，自動打開該等級
-  if (!shown(it)) { if (it.lv === 1) state.lv1 = true; else state.lv2 = true; $("lvPri").checked = state.lv1; $("lvExt").checked = state.lv2; }
+  if (!shown(it)) { state["lv" + it.lv] = true; for (const [id, k] of LV_BOX) $(id).checked = state[k]; }
   state.cat = it.cat.id; state.found = it.id;
   $("q").value = nameOf(it); $("sugg").hidden = true;
   persist(); renderTabs(); renderItems(); drawFeatures();

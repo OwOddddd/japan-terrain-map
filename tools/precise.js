@@ -3,6 +3,7 @@
 //  1. 平野＋盆地：低地・台地格子，從各自中心同時向外擴張（先到先得），範圍限制在手繪範圍附近
 //  2. 台地・高原：台地・火山麓地格子（喀斯特台地用カルスト格子），可落在平野之內（套疊）
 //  3. 山脈・山地：剩下的山地・丘陵格子，分給距離最近的山脈脊線
+//  套疊（sub）：屬於較大地形一部分的平野・山地（例：佐賀平野⊂筑紫平野、西中国山地⊂中国山地），另外計算、畫在大範圍上面
 //  4. 轉成 TopoJSON 讓相鄰範圍共用同一條邊界，再一起簡化、平滑
 const fs = require("fs");
 const { topology } = require("topojson-server");
@@ -63,7 +64,7 @@ const log = [];
 const owner = new Map();
 const lowRegs = [];
 for (const [id, margin] of [["plain", 0.15], ["basin", 0.07]])
-  for (const it of items(id)) {
+  for (const it of items(id).filter((x) => !x.sub)) {
     const isLT = (c) => LOW.has(c.m) || TERR.has(c.m);
     const seed = findSeed(center(it), isLT);
     if (!seed || owner.has(seed)) { log.push(`沿用手繪：${it.n}（附近找不到低地・台地格子）`); continue; }
@@ -140,6 +141,15 @@ for (const r of lowRegs) {
   log.push(`補強：${r.n} ${before} → ${r.cells.size} 格（手繪範圍 ${hc.length} 格）`);
 }
 regions.push(...lowRegs);
+// 套疊的平野：手繪範圍內的低地・台地格子（不搶大範圍的格子）
+for (const it of items("plain").filter((x) => x.sub)) {
+  const hc = handCells(it), isLT = (k) => { const c = grid.get(k); return c && (LOW.has(c.m) || TERR.has(c.m)); };
+  let cells = new Set(hc.filter(isLT)), supp = false;
+  if (cells.size < 0.4 * hc.length) { cells = new Set(hc); supp = true; log.push(`補強：${it.n}`); }
+  const r = { n: it.n, cells, layer: "sub", supp };
+  fillHoles(r, 6, () => true);
+  regions.push(r);
+}
 
 // ---------- 2. 台地・高原（可套疊在平野內） ----------
 const plateauCells = new Set();
@@ -205,7 +215,7 @@ function distToSpine(p, s) {
   return best;
 }
 // 側面容許 hw + max(10, hw)；頭尾端點外只容許 hw/2 + 3 km，避免山脈越過端點吃進相鄰山地（例：生駒→金剛、奥羽→下北）
-const ranges = items("range").map((it) => {
+const ranges = items("range").filter((x) => !x.sub).map((it) => {
   const hw = it.w / 2, lim = hw + Math.max(10, hw), limEnd = hw / 2 + 3;
   return { it, hw, lim, limEnd, box: boxOf(it.s, lim / 90 + 0.05), core: new Set(), r: { n: it.n, cells: new Set(), layer: "excl" } };
 });
@@ -237,6 +247,16 @@ for (const R of ranges) {
   R.r.cells = keep;
   if (!keep.size) { log.push(`沿用手繪：${R.it.n}（找不到山地格子）`); continue; }
   regions.push(R.r);
+}
+
+// 套疊的山地：從所屬山脈的格子中取脊線帶寬內的部分
+for (const it of items("range").filter((x) => x.sub)) {
+  const P = ranges.find((R) => R.it.n === it.sub), hw = it.w / 2, cells = new Set();
+  for (const k of P.r.cells) {
+    const { d, end } = distToSpine(cellCenter(...IJ(k)), it.s);
+    if (d <= (end ? hw / 2 + 2 : hw + 2)) cells.add(k);
+  }
+  regions.push({ n: it.n, cells, layer: "sub" });
 }
 
 // ---------- 4. 格子 → 多邊形 → TopoJSON（共用邊界）→ 簡化、平滑 ----------
