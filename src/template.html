@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
 <style>
-/* Layout: 桌機＝上方操作面板＋下方地圖；手機＝精簡標題列＋全幅地圖，地形選單改為底部抽屜 */
+/* Layout: 寬螢幕（≥900px）＝左側欄＋右側全高地圖（側欄可收合）；中等寬度＝上方面板＋下方地圖；手機＝精簡標題列＋全幅地圖，選單在底部抽屜 */
 :root {
   --bg: #e9eee8;
   --panel: #f8faf6;
@@ -15,19 +15,20 @@
   --accent-soft: #dcebe2;
   --on-accent: #ffffff;
   --danger: #b2402f;
+  --found: #1e2a23;
   --font-ui: "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif;
   --radius: 8px;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #141b17; --panel: #1c2520; --fg: #e3ebe5; --muted: #9aaba0; --line: #33433a;
-    --accent: #7cc39c; --accent-soft: #24382d; --on-accent: #0f1a14; --danger: #e5826f;
+    --accent: #7cc39c; --accent-soft: #24382d; --on-accent: #0f1a14; --danger: #e5826f; --found: #ffffff;
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #141b17; --panel: #1c2520; --fg: #e3ebe5; --muted: #9aaba0; --line: #33433a;
-  --accent: #7cc39c; --accent-soft: #24382d; --on-accent: #0f1a14; --danger: #e5826f;
+  --accent: #7cc39c; --accent-soft: #24382d; --on-accent: #0f1a14; --danger: #e5826f; --found: #ffffff;
   color-scheme: dark;
 }
 html, body { height: 100%; }
@@ -41,19 +42,36 @@ body {
 [hidden] { display: none !important; }
 button, input { font: inherit; color: inherit; }
 button { cursor: pointer; }
+button:disabled { cursor: not-allowed; opacity: .5; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 .panel {
   background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
   display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px 16px; padding: 12px;
 }
-.panel h1 { font-size: 18px; margin: 0; font-weight: 700; letter-spacing: .04em; text-wrap: balance; }
+.head { display: contents; }
+.panel h1 { font-size: 18px; margin: 0; font-weight: 700; letter-spacing: .04em; text-wrap: balance; grid-column: 1; grid-row: 1; }
 .panel h1 small { font-size: 12px; font-weight: 400; color: var(--muted); margin-left: 6px; letter-spacing: 0; }
 #btnExport { grid-column: 3; grid-row: 1; }
 .sheet { display: contents; }
-.sheet-head, .m-only { display: none; }
-.opts { grid-column: 2; grid-row: 1; justify-self: end; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
-.tabs, .items-head, .items, .groups { grid-column: 1 / -1; min-width: 0; }
+.sheet-head, .m-only, .w-only { display: none; }
+.search { grid-column: 2; grid-row: 1; position: relative; min-width: 0; max-width: 360px; justify-self: center; width: 100%; }
+.search input {
+  width: 100%; box-sizing: border-box; border: 1px solid var(--line); border-radius: 999px; background: var(--bg);
+  padding: 6px 14px; font-size: 13px;
+}
+.sugg {
+  position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 30;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: 0 8px 24px rgba(0,0,0,.18);
+  display: flex; flex-direction: column; padding: 4px; max-height: 320px; overflow-y: auto;
+}
+.sugg button { display: flex; align-items: baseline; gap: 8px; border: 0; background: transparent; text-align: left; padding: 7px 10px; border-radius: 6px; font-size: 14px; }
+.sugg button:hover, .sugg button[aria-selected="true"] { background: var(--accent-soft); }
+.sugg small { color: var(--muted); font-size: 11px; }
+.sugg .msg { padding: 8px 10px; font-size: 12px; color: var(--muted); }
+.opts { grid-column: 1 / -1; grid-row: 2; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.actions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; }
+.tabs, .items-head, .items, .groups, .prefs { grid-column: 1 / -1; min-width: 0; }
 .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
 .seg button { border: 0; background: transparent; padding: 4px 11px; font-size: 13px; }
 .seg button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); font-weight: 700; }
@@ -80,7 +98,7 @@ button { cursor: pointer; }
 .tab[aria-selected="true"] { background: var(--accent-soft); border-color: var(--accent); font-weight: 700; }
 
 .items-head { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
-.items { display: flex; flex-wrap: wrap; gap: 6px; max-height: 108px; overflow-y: auto; }
+.items { display: flex; flex-wrap: wrap; gap: 6px; max-height: 108px; overflow-y: auto; padding: 3px; }
 .chip {
   display: inline-flex; align-items: center; gap: 5px;
   border: 1px solid var(--line); border-radius: 6px; padding: 3px 9px 3px 7px; font-size: 13px;
@@ -89,8 +107,10 @@ button { cursor: pointer; }
 .chip .box { width: 12px; height: 12px; border-radius: 3px; border: 1.5px solid var(--muted); flex: none; box-sizing: border-box; }
 .chip[aria-pressed="true"] { border-color: var(--c); background: color-mix(in srgb, var(--c) 14%, transparent); }
 .chip[aria-pressed="true"] .box { background: var(--c); border-color: var(--c); }
+/* 搜尋結果提示：深色主題白框、淺色主題深色框 */
+.chip.found { outline: 3px solid var(--found); outline-offset: 1px; font-weight: 700; }
 
-.prefs { display: flex; flex-direction: column; gap: 6px; border-top: 1px dashed var(--line); padding-top: 10px; grid-column: 1 / -1; min-width: 0; }
+.prefs { display: flex; flex-direction: column; gap: 6px; border-top: 1px dashed var(--line); padding-top: 10px; }
 .prefs .label { color: var(--muted); font-size: 12px; }
 .pref-list { display: flex; flex-wrap: wrap; gap: 4px; max-height: 90px; overflow-y: auto; }
 .pchip { border: 1px solid var(--line); background: transparent; border-radius: 999px; padding: 2px 9px; font-size: 12px; }
@@ -126,22 +146,63 @@ button { cursor: pointer; }
 .zoom button.fit { font-size: 11px; }
 .hint { position: absolute; left: 10px; top: 10px; max-width: calc(100% - 70px); font-size: 11px; color: #33443a; background: rgba(255,255,255,.85); padding: 3px 8px; border-radius: 4px; pointer-events: none; }
 .note { position: absolute; left: 10px; bottom: 36px; max-width: calc(100% - 20px); font-size: 11px; color: #44564c; background: rgba(255,255,255,.7); padding: 2px 6px; border-radius: 4px; pointer-events: none; }
+#btnExpand { position: absolute; left: 10px; top: 10px; z-index: 5; }
+
+/* 測驗模式 */
+.quizbar {
+  position: absolute; left: 50%; top: 10px; transform: translateX(-50%); z-index: 6;
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px 8px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 6px 8px 6px 14px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.18); font-size: 13px; max-width: calc(100% - 110px);
+}
+.quizbar b { font-variant-numeric: tabular-nums; }
+body.quiz .panel { pointer-events: none; opacity: .45; }
+body.quiz #btnSheet, body.quiz #btnExport { pointer-events: none; opacity: .45; }
+.picker {
+  position: fixed; z-index: 40; width: 260px; max-height: 50vh; display: flex; flex-direction: column;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: 0 10px 30px rgba(0,0,0,.25);
+}
+.picker-head { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border-bottom: 1px solid var(--line); font-size: 13px; font-weight: 700; }
+.picker-head button { border: 0; background: transparent; font-size: 18px; line-height: 1; padding: 2px 6px; }
+.picker-list { overflow-y: auto; padding: 6px; display: flex; flex-wrap: wrap; gap: 6px; }
+.picker-list button { border: 1px solid var(--line); background: transparent; border-radius: 6px; padding: 5px 9px; font-size: 13px; }
+.picker-list button:hover { border-color: var(--accent); background: var(--accent-soft); }
+.picker-list .clear { color: var(--danger); }
+.picker-list .msg { font-size: 12px; color: var(--muted); padding: 4px; }
 
 .toast {
   position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
-  background: var(--fg); color: var(--bg); padding: 8px 14px; border-radius: 6px; font-size: 13px; z-index: 20;
+  background: var(--fg); color: var(--bg); padding: 8px 14px; border-radius: 6px; font-size: 13px; z-index: 50;
 }
-.modal { position: fixed; inset: 0; background: rgba(10,16,12,.6); display: grid; place-items: center; z-index: 10; padding: 16px; }
+.modal { position: fixed; inset: 0; background: rgba(10,16,12,.6); display: grid; place-items: center; z-index: 45; padding: 16px; }
 .modal .box {
   background: var(--panel); border-radius: var(--radius); padding: 14px; max-width: min(960px, 100%);
-  max-height: 100%; display: flex; flex-direction: column; gap: 10px; box-sizing: border-box;
+  max-height: 100%; display: flex; flex-direction: column; gap: 10px; box-sizing: border-box; overflow-y: auto;
 }
-.modal img { max-width: 100%; max-height: 70vh; object-fit: contain; border: 1px solid var(--line); }
+.modal img { max-width: 100%; max-height: 60vh; object-fit: contain; border: 1px solid var(--line); }
 .modal p { margin: 0; font-size: 13px; color: var(--muted); }
+.modal input { width: 100%; box-sizing: border-box; border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; background: var(--bg); font-size: 13px; }
 
-/* 中等寬度：選項另起一行，避免擠成一欄 */
-@media (min-width: 641px) and (max-width: 1180px) {
-  .opts { grid-column: 1 / -1; grid-row: 2; justify-self: start; }
+/* 寬螢幕（≥900px）：左側欄 */
+@media (min-width: 900px) {
+  body { flex-direction: row; }
+  .panel {
+    width: 400px; flex: none; display: flex; flex-direction: column; align-items: stretch; gap: 10px;
+    overflow-y: auto; padding: 14px;
+  }
+  .head { display: flex; align-items: flex-start; gap: 8px; }
+  .panel h1 { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+  .panel h1 small { margin-left: 0; }
+  .w-only { display: inline-flex; }
+  .search { max-width: none; }
+  .opts { gap: 8px 12px; }
+  .tabs { flex-wrap: wrap; overflow: visible; }
+  .items { max-height: none; overflow: visible; }
+  .pref-list { max-height: none; overflow: visible; }
+  .groups form { margin-left: 0; width: 100%; }
+  .groups input[type="text"] { flex: 1; }
+  .map-wrap { min-height: 0; }
+  body.collapsed .panel { display: none; }
 }
 @media (max-width: 640px) {
   body { padding-block: 8px; gap: 8px; }
@@ -169,9 +230,11 @@ button { cursor: pointer; }
   .sheet.open { transform: none; visibility: visible; transition: transform .22s ease; }
   .sheet-head {
     display: flex; align-items: center; justify-content: space-between;
-    position: sticky; top: 0; z-index: 1; background: var(--panel); padding: 12px 0 8px; font-weight: 700;
+    position: sticky; top: 0; z-index: 2; background: var(--panel); padding: 12px 0 8px; font-weight: 700;
   }
-  .opts { justify-self: stretch; gap: 10px 14px; font-size: 14px; }
+  .search { max-width: none; }
+  .search input { font-size: 16px; padding: 8px 14px; }
+  .opts { gap: 10px 14px; font-size: 14px; }
   .opts .opt { font-size: 14px; }
   /* 抽屜內容不可被壓縮，超出時由抽屜本身捲動 */
   .sheet > * { flex-shrink: 0; }
@@ -186,22 +249,31 @@ button { cursor: pointer; }
   .map-wrap { min-height: 0; }
   .zoom button { width: 38px; height: 38px; }
   .note { font-size: 10px; bottom: 34px; }
+  .quizbar { top: 8px; left: 8px; right: 54px; transform: none; max-width: none; border-radius: 12px; }
+  .picker { left: 0 !important; right: 0; bottom: 0; top: auto !important; width: auto; max-height: 55vh; border-radius: 14px 14px 0 0; padding-bottom: env(safe-area-inset-bottom, 0px); }
 }
 @media (prefers-reduced-motion: reduce) { .sheet, .sheet.open { transition: none; } }
 </style>
 
 <div class="panel" id="panel">
-  <h1><span data-t="title"></span><small data-t="subtitle"></small></h1>
-  <button class="btn m-only" id="btnSheet" type="button" aria-expanded="false" aria-controls="sheet"><span data-t="pick"></span> <b id="selCount">0</b></button>
-  <button class="btn primary" id="btnExport" type="button"><span class="d-only" data-t="export"></span><span class="m-only" data-t="exportShort"></span></button>
+  <div class="head">
+    <h1><span data-t="title"></span><small data-t="subtitle"></small></h1>
+    <button class="btn m-only" id="btnSheet" type="button" aria-expanded="false" aria-controls="sheet"><span data-t="pick"></span> <b id="selCount">0</b></button>
+    <button class="btn primary" id="btnExport" type="button"><span class="d-only" data-t="export"></span><span class="m-only" data-t="exportShort"></span></button>
+    <button class="btn w-only" id="btnCollapse" type="button" data-t-aria="collapse" data-t-title="collapse">«</button>
+  </div>
   <div class="sheet" id="sheet">
   <div class="sheet-head"><span data-t="pick"></span><button class="btn primary" id="btnSheetClose" type="button" data-t="done"></button></div>
+  <div class="search" role="search">
+    <input type="search" id="q" autocomplete="off" data-t-ph="searchPh" data-t-aria="searchPh" aria-controls="sugg" aria-autocomplete="list">
+    <div class="sugg" id="sugg" role="listbox" hidden></div>
+  </div>
   <div class="opts">
     <span class="seg" role="group" aria-label="言語 / 語言">
       <button type="button" id="langJa" lang="ja">日本語</button><button type="button" id="langZh" lang="zh-Hant">中文</button>
     </span>
     <span class="seg" role="group" data-t-aria="detailLabel">
-      <button type="button" id="dSimple" data-t="simple"></button><button type="button" id="dDetail" data-t="detail"></button>
+      <button type="button" id="mSimple" data-t="simple"></button><button type="button" id="mDetail" data-t="detail"></button><button type="button" id="mRelief" data-t="relief"></button>
     </span>
     <span class="lv-group" role="group" data-t-aria="levels">
       <label class="opt"><input type="checkbox" id="lvPri" checked> <span data-t="lv1"></span></label>
@@ -211,6 +283,11 @@ button { cursor: pointer; }
     <label class="opt" id="kanaOpt"><input type="checkbox" id="optKana" checked> <span data-t="kana"></span></label>
     <label class="opt"><input type="checkbox" id="optPref" checked> <span data-t="pref"></span></label>
     <button class="btn" id="btnClear" type="button" data-t="clear"></button>
+  </div>
+  <div class="actions">
+    <button class="btn" id="btnBlank" type="button" data-t="actBlank"></button>
+    <button class="btn" id="btnQuiz" type="button" data-t="actQuiz"></button>
+    <button class="btn" id="btnShare" type="button" data-t="actShare" hidden></button>
   </div>
   <div class="tabs" id="tabs" role="tablist" data-t-aria="cats"></div>
   <div class="items-head">
@@ -236,20 +313,33 @@ button { cursor: pointer; }
 
 <div class="map-wrap" id="mapWrap">
   <div id="mapLayer"><svg id="map" xmlns="http://www.w3.org/2000/svg" role="img"></svg></div>
+  <button class="btn" id="btnExpand" type="button" hidden data-t="expand"></button>
   <div class="zoom">
     <button type="button" id="zIn" data-t-aria="zoomIn">+</button>
     <button type="button" id="zOut" data-t-aria="zoomOut">−</button>
     <button type="button" id="zAll" class="fit" data-t="zoomAll"></button>
   </div>
+  <div class="quizbar" id="quizBar" hidden>
+    <span data-t="quizTitle"></span>
+    <b id="quizStatus"></b>
+    <button class="btn small primary" id="qCheck" type="button" data-t="quizCheck"></button>
+    <button class="btn small" id="qSave" type="button" data-t="quizSave"></button>
+    <button class="btn small" id="qExit" type="button" data-t="quizExit"></button>
+  </div>
   <div class="note" data-t="note"></div>
   <div class="hint" id="dcHint" hidden data-t="hint"></div>
 </div>
 
+<div class="picker" id="picker" hidden role="dialog">
+  <div class="picker-head"><span data-t="quizPick"></span><button type="button" id="pickClose" aria-label="×">×</button></div>
+  <div class="picker-list" id="pickList"></div>
+</div>
 <div class="toast" id="toast" hidden></div>
 <div class="modal" id="modal" hidden>
   <div class="box">
-    <p data-t="saveHelp"></p>
-    <img id="modalImg" alt="">
+    <p id="modalMsg"></p>
+    <div id="modalImgs"></div>
+    <input id="modalText" readonly hidden>
     <div><button class="btn" type="button" id="modalClose" data-t="close"></button></div>
   </div>
 </div>
@@ -264,6 +354,8 @@ const REAL = /*__REAL__*/null;
 const PTOPO = /*__PRECISE__*/null;
 // 每個地形涉及的都道府縣代碼（以精緻版範圍判定，由 tools/prefs.mjs 產生）
 const PREFS_OF = /*__PREFS__*/null;
+// 起伏圖：國土地理院「標高タイル」z8 合成的色別標高＋陰影圖（Web Mercator，由 tools/relief.py 產生）
+const RELIEF = /*__RELIEF__*/null;
 /*__TERRAIN__*/
 
 // 地圖本身固定配色（輸出圖片時也一樣）
@@ -285,12 +377,18 @@ const MAP_STYLE = `
 .psel-halo{stroke:#fff;stroke-width:4.5;stroke-opacity:.85}
 .psel{stroke:#1f2a44;stroke-width:2}
 .lbl.speaking text{stroke:#ffe27a}
-.credit{font-family:"Hiragino Sans","Yu Gothic","Meiryo","Noto Sans JP",sans-serif;fill:#5a6b62;paint-order:stroke;stroke:#fff;stroke-width:3;stroke-linejoin:round}
+.credit,.legend text,.score{font-family:"Hiragino Sans","Yu Gothic","Meiryo","Noto Sans JP",sans-serif}
+.credit{fill:#5a6b62;paint-order:stroke;stroke:#fff;stroke-width:3;stroke-linejoin:round}
+.legend text{font-size:10px;fill:#2a332e}
+.qbox{fill:#fff;stroke:#2a332e;stroke-width:1.2}
+.qbox.filled{fill:#fffbe6}
+.qbox.active{stroke:#e8590c;stroke-width:2.6}
+.score{font-size:18px;font-weight:700;fill:#1e2a23;paint-order:stroke;stroke:#fff;stroke-width:4;stroke-linejoin:round}
 `;
 
 const I18N = {
   ja: {
-    simple: "簡易", detail: "詳細", detailLabel: "範囲の表し方",
+    simple: "簡易", detail: "詳細", relief: "起伏", detailLabel: "範囲の表し方",
     prefsTitle: "都道府県（選ぶと、その都道府県に一部でもかかる地形をすべて選択）",
     prefAdded: (n, c) => `「${n}」の地形 ${c} 件を選択しました`, prefRemoved: (n) => `「${n}」の選択を解除しました`,
     title: "日本地形マップ", subtitle: "地形を選び、地名をタップすると読み上げます", pick: "地形を選ぶ", export: "画像を保存", exportShort: "保存",
@@ -300,6 +398,7 @@ const I18N = {
     note: "範囲・位置は学習用の概略です", hint: "重なる地名は非表示です。拡大すると表示されます",
     saveHelp: "画像を右クリック（スマホは長押し）して保存してください。", close: "閉じる",
     credit: "出典：地球地図日本・地名集日本（国土地理院）", credit2: "国土数値情報 河川・湖沼・土地分類メッシュ（国土交通省）を加工して作成", mapLabel: "日本地形マップ",
+    creditRelief: "標高：地理院タイル（標高タイル）を加工して作成",
     srcRiver: "河道：国土数値情報（河川）", srcLake: "湖岸線：国土数値情報（湖沼）", srcArea: "範囲：国土数値情報（土地分類メッシュ）から作成",
     srcGsi: "位置：国土地理院「地名集日本」", srcRough: "位置・範囲：学習用の概略",
     noGroups: "グループはまだありません。地形を選んで名前を付けると保存できます", applyGroup: "このグループを表示",
@@ -308,9 +407,19 @@ const I18N = {
     localOnly: "グループはこのブラウザだけに保存されました", needLevel: "「主要」と「副次」のどちらかは選んでください",
     noSpeech: "このブラウザは読み上げに対応していません", noVoice: "日本語の音声が見つかりません。端末に日本語音声を追加してください",
     downloaded: "画像をダウンロードしました", savedImg: "画像を保存しました", exportFail: "保存できませんでした：",
+    legend: "標高（m）", collapse: "パネルを閉じる", expand: "≡ メニュー",
+    searchPh: "地名を検索（例：関東、かんとう）", searchGeneric: "もう少し具体的に入力してください（例：「関東平野」なら「関東」）", searchNone: "見つかりません",
+    actBlank: "白地図を保存", actQuiz: "テスト", actShare: "リンクを共有",
+    shareCopied: "リンクをコピーしました", shareHelp: "このリンクをコピーして共有してください",
+    needOne: "地形を1つ以上選んでください", reliefNo: "起伏表示ではテスト・白地図は使えません。「簡易」か「詳細」に切り替えてください",
+    answerKey: "解答", blankSaved: "白地図と解答を保存しました",
+    quizTitle: "テスト中", quizNeed: "テストには地形を2つ以上選んでください", quizProgress: (a, t) => `回答 ${a}/${t}`,
+    quizCheck: "答え合わせ", quizSave: "画像を保存", quizExit: "終了", quizExitConfirm: "もう一度押すと終了",
+    quizScore: (s, c, t) => `${s}点（${c}/${t} 正解）`, quizPick: "地名を選ぶ", quizClear: "空欄に戻す",
+    quizEmpty: "残りの地名はありません。入れ替えるには、使った欄を空欄に戻してください", quizDone: "答え合わせ済みです",
   },
   zh: {
-    simple: "簡易", detail: "精緻", detailLabel: "範圍顯示方式",
+    simple: "簡易", detail: "精緻", relief: "起伏", detailLabel: "範圍顯示方式",
     prefsTitle: "都道府縣（選取後，只要有一部分在該縣內的地形都會一起勾選）",
     prefAdded: (n, c) => `已勾選「${n}」的 ${c} 個地形`, prefRemoved: (n) => `已取消「${n}」`,
     title: "日本地形地圖", subtitle: "勾選地形，點地名可聽讀音", pick: "選擇地形", export: "輸出圖片", exportShort: "輸出",
@@ -320,6 +429,7 @@ const I18N = {
     note: "範圍與位置為學習用概略圖", hint: "部分地名重疊已隱藏，放大即可顯示",
     saveHelp: "在圖片上按右鍵（手機長按）即可另存。", close: "關閉",
     credit: "出處：地球地圖日本・地名集日本（國土地理院）", credit2: "國土數值情報 河川・湖沼・土地分類網格（國土交通省）經加工製作", mapLabel: "日本地形地圖",
+    creditRelief: "標高：地理院圖磚（標高圖磚）經加工製作",
     srcRiver: "河道：國土數值情報（河川）", srcLake: "湖岸線：國土數值情報（湖沼）", srcArea: "範圍：依國土數值情報（土地分類網格）製作",
     srcGsi: "位置：國土地理院「地名集日本」", srcRough: "位置・範圍：學習用概略值",
     noGroups: "尚無群組，勾選後輸入名稱即可儲存", applyGroup: "套用這個群組",
@@ -328,6 +438,16 @@ const I18N = {
     localOnly: "群組只儲存在這個瀏覽器", needLevel: "「主要」和「次要」至少要勾一個",
     noSpeech: "這個瀏覽器不支援語音朗讀", noVoice: "找不到中文語音，請在系統安裝中文語音",
     downloaded: "圖片已下載", savedImg: "圖片已儲存", exportFail: "輸出失敗：",
+    legend: "標高（m）", collapse: "收合面板", expand: "≡ 選單",
+    searchPh: "搜尋地名（例：關東、かんとう）", searchGeneric: "請輸入更具體的名稱（例：關東平野→「關東」）", searchNone: "找不到符合的地形",
+    actBlank: "輸出白地圖", actQuiz: "測驗", actShare: "分享連結",
+    shareCopied: "已複製連結", shareHelp: "請複製這個連結分享",
+    needOne: "請至少勾選一個地形", reliefNo: "起伏模式下無法使用測驗與白地圖，請切換到「簡易」或「精緻」",
+    answerKey: "解答", blankSaved: "已輸出白地圖與解答",
+    quizTitle: "測驗中", quizNeed: "測驗至少需要勾選兩個地形", quizProgress: (a, t) => `已作答 ${a}/${t}`,
+    quizCheck: "對答案", quizSave: "輸出圖片", quizExit: "退出", quizExitConfirm: "再按一次退出",
+    quizScore: (s, c, t) => `${s} 分（答對 ${c}/${t}）`, quizPick: "選擇地名", quizClear: "清除此格",
+    quizEmpty: "已沒有剩下的地名。要替換，請先清除用過的格子", quizDone: "已對完答案",
   },
 };
 const CAT_ZH = { range: "山脈・山地", volcano: "火山", mountain: "山", plain: "平野", plateau: "台地・高原", basin: "盆地",
@@ -338,9 +458,13 @@ const ZH_NAME = { "シラス台地": "白砂台地", "四国カルスト": "四�
   "東シナ海": "東海", "フィリピン海": "菲律賓海", "トカラ海峡": "吐噶喇海峽", "トカラ列島": "吐噶喇列島", "リマン海流": "里曼寒流",
   "相模トラフ": "相模海槽", "駿河トラフ": "駿河海槽", "南海トラフ": "南海海槽", "フォッサマグナ": "大地溝帶",
   "黒潮（日本海流）": "黑潮（日本暖流）", "親潮（千島海流）": "親潮（千島寒流）", "対馬海流": "對馬暖流" };
-const ZH_CHAR = Object.fromEntries([..."両兩乗乘亀龜児兒剣劍剱劍国國塩鹽増增壱壹売賣奥奧対對峡峽広廣恋戀択擇曽曾来來桜櫻歩步歯齒沢澤浅淺浜濱湾灣湿濕瀬瀨焼燒状狀狭狹礼禮禅禪穂穗竜龍総總経經縄繩蔵藏讃讚豊豐軽輕辺邊関關隠隱静靜騨驒黒黑黄黃横橫徳德糸絲与與会會猪豬"]
+const ZH_CHAR = Object.fromEntries([..."両兩乗乘亀龜児兒剣劍剱劍国國塩鹽増增壱壹売賣奥奧対對峡峽広廣恋戀択擇曽曾来來桜櫻歩步歯齒沢澤浅淺浜濱湾灣湿濕瀬瀨焼燒状狀狭狹礼禮禅禪穂穗竜龍総總経經縄繩蔵藏讃讚豊豐軽輕辺邊関關隠隱静靜騨驒黒黑黄黃横橫徳德糸絲与與会會猪豬内內戸戶万萬予豫"]
   .reduce((a, c, i, arr) => (i % 2 ? a : [...a, [c, arr[i + 1]]]), []));
 const zhName = (n) => ZH_NAME[n] || [...n.replace(/ヶ/g, "").replace(/[のノ]/g, "之")].map((c) => ZH_CHAR[c] || c).join("");
+// 搜尋用：繁體 → 日文新字體（反查 ZH_CHAR）
+const JA_CHAR = Object.fromEntries(Object.entries(ZH_CHAR).map(([a, b]) => [b, a]));
+const toJa = (s) => [...s].map((c) => JA_CHAR[c] || c).join("");
+const toHira = (s) => s.replace(/[ァ-ヶ]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0x60));
 
 const LS = {
   get(k, d) { try { const v = localStorage.getItem("jpterrain:" + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
@@ -351,6 +475,7 @@ const cap = (name) => (window.claude && window.claude.use ? window.claude.use(na
 // ---------- 資料整理 ----------
 const ITEM = new Map();
 for (const cat of CATS) cat.items.forEach((it) => { it.id = cat.id + ":" + it.n; it.cat = cat; it.zh = zhName(it.n); ITEM.set(it.id, it); });
+const ITEM_LIST = [...ITEM.values()];
 const catLabel = (cat) => (state.lang === "zh" ? CAT_ZH[cat.id] : cat.label);
 const nameOf = (it) => (state.lang === "zh" ? it.zh : it.n);
 
@@ -378,7 +503,7 @@ const realOf = (it) => {
 for (const g of Object.values(REAL.lakes)) rewind(g);
 const PRECISE = new Map(topojson.feature(PTOPO, PTOPO.objects.precise).features.map((f) => [f.properties.n, rewind(f.geometry)]));
 const PRECISE_CATS = new Set(["range", "plain", "plateau", "basin"]);
-const preciseOf = (it) => (state.detail && PRECISE_CATS.has(it.cat.id) && PRECISE.get(it.n)) || null;
+const preciseOf = (it) => (state.mode === "detail" && PRECISE_CATS.has(it.cat.id) && PRECISE.get(it.n)) || null;
 // 同類相鄰的範圍分到不同深淺（貪婪著色），避免整片同色分不出界線
 const SHADE = (() => {
   const geos = PTOPO.objects.precise.geometries, nb = topojson.neighbors(geos), idx = new Map();
@@ -421,6 +546,7 @@ function labelPoint(it, geom) {
 
 // ---------- 狀態 ----------
 const DEFAULT_SEL = [...CATS[0].items, ...CATS[3].items, ...CATS[6].items].filter((i) => i.lv === 1).map((i) => i.id);
+const MODES = ["simple", "detail", "relief"];
 const state = {
   sel: new Set((LS.get("sel", null) || DEFAULT_SEL).filter((id) => ITEM.has(id))),
   cat: LS.get("cat", CATS[0].id),
@@ -430,16 +556,42 @@ const state = {
   lv1: LS.get("lv1", true),
   lv2: LS.get("lv2", true),
   lang: LS.get("lang", "ja") === "zh" ? "zh" : "ja",
-  detail: LS.get("detail", false) === true,
+  mode: MODES.includes(LS.get("mode", "")) ? LS.get("mode", "") : (LS.get("detail", false) === true ? "detail" : "simple"),
   prefs: new Set(LS.get("prefs", [])),
+  found: null,
 };
+if (!RELIEF && state.mode === "relief") state.mode = "simple";
 const T = (k, ...a) => { const v = I18N[state.lang][k]; return typeof v === "function" ? v(...a) : v; };
 if (!CATS.some((c) => c.id === state.cat)) state.cat = CATS[0].id;
 let groups = LS.get("groups", []);
-const persist = () => { LS.set("sel", [...state.sel]); LS.set("cat", state.cat); LS.set("names", state.names); LS.set("kana", state.kana); LS.set("pref", state.pref); LS.set("lv1", state.lv1); LS.set("lv2", state.lv2); LS.set("lang", state.lang); LS.set("detail", state.detail); LS.set("prefs", [...state.prefs]); };
+const persist = () => { LS.set("sel", [...state.sel]); LS.set("cat", state.cat); LS.set("names", state.names); LS.set("kana", state.kana); LS.set("pref", state.pref); LS.set("lv1", state.lv1); LS.set("lv2", state.lv2); LS.set("lang", state.lang); LS.set("mode", state.mode); LS.set("prefs", [...state.prefs]); };
 // 只勾「主要」或「次要」其中一個時，只顯示並操作該等級的地形
 const shown = (it) => (it.lv === 1 ? state.lv1 : state.lv2);
 const shownItems = (cat) => cat.items.filter(shown);
+
+// ---------- 分享連結：勾選內容編碼在網址 #s1.xxxx ----------
+const b64u = { enc: (bytes) => btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""),
+  dec: (s) => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0)) };
+function encodeState() {
+  const bits = (n) => new Uint8Array(Math.ceil(n / 8));
+  const sel = bits(ITEM_LIST.length); ITEM_LIST.forEach((it, i) => { if (state.sel.has(it.id)) sel[i >> 3] |= 1 << (i & 7); });
+  const pf = bits(48); for (const id of state.prefs) pf[id >> 3] |= 1 << (id & 7);
+  const flags = (state.lang === "zh") | (MODES.indexOf(state.mode) << 1) | (state.lv1 << 3) | (state.lv2 << 4) | (state.names << 5) | (state.kana << 6) | (state.pref << 7);
+  return "s1." + b64u.enc([flags, ...pf, ...sel]);
+}
+function decodeState(token) {
+  try {
+    const b = b64u.dec(token.slice(3)), f = b[0];
+    const sel = new Set(), prefs = new Set();
+    for (let id = 1; id <= 47; id++) if (b[1 + (id >> 3)] & (1 << (id & 7))) prefs.add(id);
+    ITEM_LIST.forEach((it, i) => { if (b[7 + (i >> 3)] & (1 << (i & 7))) sel.add(it.id); });
+    Object.assign(state, { lang: f & 1 ? "zh" : "ja", mode: MODES[(f >> 1) & 3] || "simple", lv1: !!(f & 8), lv2: !!(f & 16), names: !!(f & 32), kana: !!(f & 64), pref: !!(f & 128), sel, prefs });
+    if (!state.lv1 && !state.lv2) state.lv1 = true;
+    if (!RELIEF && state.mode === "relief") state.mode = "simple";
+    persist();
+  } catch { /* 網址壞掉時忽略，沿用原本的狀態 */ }
+}
+if (location.hash.startsWith("#s1.")) decodeState(location.hash.slice(1));
 
 // ---------- 地圖 ----------
 const svg = d3.select("#map");
@@ -451,13 +603,16 @@ const FIT = { type: "LineString", coordinates: [[129.6, 31.0], [145.9, 45.55]] }
 const FIT_ALL = [[122.8, 24.0], [148.2, 46.0]];
 let leaderG, W = 0, H = 0, projection, path, zoomG, labelG, transform = d3.zoomIdentity, labels = [], currents = [], obstacles = [];
 const curve = d3.line().curve(d3.curveCatmullRom.alpha(0.5));
+// 白地圖輸出與測驗用的狀態
+let blankMode = false, blankKey = [];
+const quiz = { on: false, ids: [], answers: new Map(), graded: false, pool: [] };
 // 拖曳、縮放手勢進行中只對整張 SVG 套 CSS transform（由 GPU 處理，不重繪向量），手勢結束才套用真正的座標並重排地名
 let gestureBase = null;
 function applyTransform() { zoomG.attr("transform", transform); placeLabels(); }
 const layer = document.getElementById("mapLayer");
 const zsel = d3.select(wrap);
 const zoom = d3.zoom().scaleExtent([0.3, 14])
-  .filter((e) => (!e.ctrlKey || e.type === "wheel") && !e.button && !e.target.closest(".zoom"))
+  .filter((e) => (!e.ctrlKey || e.type === "wheel") && !e.button && !e.target.closest(".zoom,.quizbar,#btnExpand"))
   .on("start", (e) => { if (e.sourceEvent) gestureBase = transform; })
   .on("zoom", (e) => {
     transform = e.transform;
@@ -473,9 +628,9 @@ const zoom = d3.zoom().scaleExtent([0.3, 14])
     declutter();
   });
 
-// 手機等小地圖：重疊的地名先隱藏（主要項目先保留），放大後自動顯示
+// 重疊的地名先隱藏（主要項目先保留），放大後自動顯示；白地圖與測驗時全部顯示
 function declutter() {
-  const small = W < 640;
+  const allowHide = !quiz.on && !blankMode;
   const kept = [];
   let hidden = 0;
   const order = labels.map((l, i) => i).sort((a, b) => labels[a].lv - labels[b].lv || a - b);
@@ -488,13 +643,14 @@ function declutter() {
     else {
       // 優先選不蓋到其他範圍的位置；都會蓋到時選蓋得最少的
       let bestN = Infinity;
-      for (const c of free) {
+      for (const c of free.length ? free : cs) {
         const n = coverOthers(l, c.r);
         if (n < bestN) { bestN = n; pick = c; }
         if (!n) break;
       }
+      if (!free.length && allowHide) pick = null;
     }
-    const hide = small && state.names && !pick;
+    const hide = allowHide && state.names && !pick;
     moveLabel(l, pick || cs[0]);
     if (!hide) kept.push((pick || cs[0]).r);
     l.g.classed("dc", hide);
@@ -516,6 +672,12 @@ function buildBase() {
   svg.append("rect").attr("class", "sea").attr("width", W).attr("height", H);
   zoomG = svg.append("g");
   zoomG.append("path").attr("class", "land").attr("d", path(land));
+  if (RELIEF) {
+    // Web Mercator 圖片與 d3.geoMercator 只差縮放與位移，四角投影後直接對齊
+    const a = projection([RELIEF.west, RELIEF.north]), b = projection([RELIEF.east, RELIEF.south]);
+    zoomG.append("image").attr("id", "relief").attr("href", RELIEF.img).attr("x", a[0]).attr("y", a[1])
+      .attr("width", b[0] - a[0]).attr("height", b[1] - a[1]).attr("preserveAspectRatio", "none").attr("display", "none");
+  }
   zoomG.append("g").attr("id", "areas").attr("clip-path", "url(#landClip)");
   zoomG.append("g").attr("id", "bands").attr("clip-path", "url(#landClip)");
   zoomG.append("path").attr("class", "pref").attr("d", path(prefMesh)).attr("vector-effect", "non-scaling-stroke");
@@ -526,6 +688,7 @@ function buildBase() {
   zoomG.append("g").attr("id", "prefSel");
   labelG = svg.append("g").attr("id", "labels");
   leaderG = labelG.append("g").attr("id", "leaders");
+  svg.append("g").attr("id", "legend");
   const cfs = W < 500 ? 8.5 : 10;
   svg.append("text").attr("class", "credit").attr("x", W - 8).attr("y", H - 8 - cfs * 1.35).attr("text-anchor", "end")
     .attr("font-size", cfs).text(T("credit"));
@@ -540,10 +703,30 @@ function pxPerKm(lonlat) {
   return Math.hypot(b[0] - a[0], b[1] - a[1]) / 111.32;
 }
 
+// 起伏圖的標高圖例（畫在 SVG 裡，輸出圖片時一起帶出）
+function drawLegend() {
+  const g = svg.select("#legend"); g.selectAll("*").remove();
+  if (state.mode !== "relief" || !RELIEF) return;
+  const stops = RELIEF.stops, x = 12, y0 = H - 80 - stops.length * 14, w = 14, h = 14;
+  g.append("rect").attr("x", x - 6).attr("y", y0 - 22).attr("width", 92).attr("height", stops.length * h + 30)
+    .attr("rx", 6).attr("fill", "#fff").attr("fill-opacity", .85);
+  g.append("text").attr("x", x).attr("y", y0 - 8).attr("font-weight", 700).text(T("legend"));
+  stops.slice().reverse().forEach(([m, col], i) => {
+    g.append("rect").attr("x", x).attr("y", y0 + i * h).attr("width", w).attr("height", h).attr("fill", col);
+    g.append("text").attr("x", x + w + 6).attr("y", y0 + i * h + 11).text(m === 3000 ? "3000〜" : String(m));
+  });
+}
+
 function drawFeatures() {
   if (!zoomG) return;
+  const relief = state.mode === "relief";
   const areas = zoomG.select("#areas"), bands = zoomG.select("#bands"), lines = zoomG.select("#lines"), lakes = zoomG.select("#lakes");
   [areas, bands, lines, lakes].forEach((g) => g.selectAll("*").remove());
+  zoomG.select("#relief").attr("display", relief ? null : "none");
+  svg.select(".credit2").text(T(relief ? "creditRelief" : "credit2"));
+  const el = svg.node();
+  el.classList.toggle("nonames", !state.names && !quiz.on && !blankMode);
+  el.classList.toggle("nokana", !state.kana || quiz.on || blankMode);
   const ps = zoomG.select("#prefSel"); ps.selectAll("*").remove();
   for (const id of state.prefs) {
     const d = path(PREF_FEATS.get(id));
@@ -553,9 +736,14 @@ function drawFeatures() {
   labelG.selectAll("*").remove();
   leaderG = labelG.append("g").attr("id", "leaders");
   labels = []; currents = []; obstacles = [];
+  drawLegend();
+  // 起伏模式：只顯示起伏圖與縣界，地形與地名不畫（勾選內容保留）
+  if (relief) { $("dcHint").hidden = true; return; }
+  const entries = [];
   for (const cat of CATS) {
     for (const it of cat.items) {
       if (!state.sel.has(it.id) || !shown(it)) continue;
+      if (quiz.on && !quiz.ids.includes(it.id)) continue;
       const geom = geomOf(it);
       const k = cat.kind;
       if (k === "area" && preciseOf(it)) {
@@ -600,16 +788,25 @@ function drawFeatures() {
         // 精緻版、湖泊、沒有指定位置的範圍：用範圍內離邊界最遠的點當錨點，地名一定落在自己的範圍裡
         if (preciseOf(it) || k === "lake" || !it.l) anchor = projection.invert(polylabel(largestPoly(polys)));
       }
-      const l = addLabel(it, cat, anchor || labelPoint(it, geom));
-      if (isRegion) {
-        l.fb = path.bounds(geom); l.polys = polys;
-        obstacles.push({ rect: l.fb, owner: l, polys });
-      } else if (k === "band") {
-        const pts = it.s.map((c) => projection(c)), hw = it.w * pxPerKm(it.s[Math.floor(it.s.length / 2)]) / 2;
-        l.band = { pts, hw }; obstacles.push({ caps: pts, r: hw, rect: path.bounds(geom), owner: l });
-      }
+      entries.push({ it, cat, k, geom, isRegion, polys, lonlat: anchor || labelPoint(it, geom) });
     }
   }
+  // 白地圖：依類別順序、同類由北到南編號
+  if (blankMode) {
+    const ci = new Map(CATS.map((c, i) => [c.id, i]));
+    entries.sort((a, b) => ci.get(a.cat.id) - ci.get(b.cat.id) || b.lonlat[1] - a.lonlat[1]);
+    blankKey = entries.map((e, i) => ({ n: i + 1, it: e.it }));
+  }
+  entries.forEach((e, i) => {
+    const l = addLabel(e.it, e.cat, e.lonlat, blankMode ? { num: i + 1 } : quiz.on ? { quiz: true } : null);
+    if (e.isRegion) {
+      l.fb = path.bounds(e.geom); l.polys = e.polys;
+      obstacles.push({ rect: l.fb, owner: l, polys: e.polys });
+    } else if (e.k === "band") {
+      const pts = e.it.s.map((c) => projection(c)), hw = e.it.w * pxPerKm(e.it.s[Math.floor(e.it.s.length / 2)]) / 2;
+      l.band = { pts, hw }; obstacles.push({ caps: pts, r: hw, rect: path.bounds(e.geom), owner: l });
+    }
+  });
   placeLabels();
   declutter();
 }
@@ -674,7 +871,8 @@ function srcKey(it) {
   if (realOf(it)) return { river: "srcRiver", lake: "srcLake" }[it.cat.kind];
   return it.src === "gsi" ? "srcGsi" : "srcRough";
 }
-function addLabel(it, cat, lonlat) {
+// 地名標籤：一般（漢字＋振假名）／白地圖（圓圈編號）／測驗（空格或作答內容）
+function addLabel(it, cat, lonlat, mode) {
   const p = projection(lonlat);
   const g = labelG.append("g");
   const k = cat.kind;
@@ -695,37 +893,68 @@ function addLabel(it, cat, lonlat) {
   else if (k === "trench" || k === "fault") { color = cat.color; size = 11.5; }
 
   const lg = g.append("g").attr("class", "lbl").attr("fill", color);
-  lg.append("title").text((state.lang === "zh" ? `${it.zh}（${it.n}）` : `${it.n}（${readingOf(it)}）`) + "\n" + T(srcKey(it)));
-  const segs = rubySegs(it);
-  let x = 0;
-  for (const s of segs) {
-    const bt = lg.append("text").attr("font-size", size).attr("stroke-width", 3).text(s.b);
-    const bw = bt.node().getComputedTextLength();
-    let rt = null, rw = 0;
-    if (s.r) {
-      rt = lg.append("text").attr("class", "rb").attr("font-size", size * 0.55).attr("stroke-width", 2.4).text(s.r);
-      rw = rt.node().getComputedTextLength();
+  let x = 0, ox, oy;
+  if (mode && mode.num) {
+    // 白地圖：圓圈編號
+    const r = 9.5, t = String(mode.num);
+    lg.append("circle").attr("cx", r).attr("cy", 0).attr("r", r).attr("fill", "#fff").attr("stroke", "#1e2a23").attr("stroke-width", 1.4);
+    lg.append("text").attr("x", r).attr("y", 4).attr("text-anchor", "middle").attr("font-size", t.length > 2 ? 9 : 11)
+      .attr("fill", "#1e2a23").attr("stroke-width", 0).text(t);
+    x = r * 2;
+    ox = align === "start" ? dx : -r; oy = 0;
+  } else if (mode && mode.quiz) {
+    // 測驗：未作答顯示空格；答對後顯示答案，答錯時紅字並在下方以藍字顯示正確答案
+    const ans = quiz.answers.get(it.id), fs = 12;
+    const shownTxt = ans ? nameOf(ITEM.get(ans)) : "？";
+    const right = quiz.graded && ans === it.id, wrong = quiz.graded && ans !== it.id;
+    const tw = lg.append("text").attr("font-size", fs).attr("stroke-width", 0).text(shownTxt);
+    const w1 = Math.max(46, tw.node().getComputedTextLength() + 16);
+    let w2 = 0, tc = null;
+    if (wrong) {
+      tc = lg.append("text").attr("font-size", fs).attr("stroke-width", 0).attr("fill", "#1d5fc4").text(nameOf(it));
+      w2 = tc.node().getComputedTextLength() + 16;
     }
-    const w = Math.max(bw, rw);
-    bt.attr("x", x + w / 2).attr("text-anchor", "middle");
-    if (rt) rt.attr("x", x + w / 2).attr("y", -size * 0.98).attr("text-anchor", "middle");
-    x += w;
+    x = Math.max(w1, w2);
+    lg.insert("rect", "text").attr("class", "qbox" + (ans ? " filled" : "")).attr("x", 0).attr("y", -fs - 3).attr("width", x)
+      .attr("height", fs + 9 + (wrong ? fs + 4 : 0)).attr("rx", 4)
+      .attr("stroke", wrong ? "#c62828" : right ? "#2e7d32" : null).attr("stroke-width", quiz.graded ? 2 : null);
+    tw.attr("x", x / 2).attr("y", 0).attr("text-anchor", "middle").attr("fill", wrong ? "#c62828" : right ? "#2e7d32" : ans ? "#1e2a23" : "#8a958d")
+      .attr("text-decoration", wrong && ans ? "line-through" : null);
+    if (tc) tc.attr("x", x / 2).attr("y", fs + 4).attr("text-anchor", "middle");
+    ox = align === "start" ? dx : -x / 2; oy = size * 0.36;
+    lg.on("click", (e) => { e.stopPropagation(); openPicker(it, e, lg); });
+  } else {
+    lg.append("title").text((state.lang === "zh" ? `${it.zh}（${it.n}）` : `${it.n}（${readingOf(it)}）`) + "\n" + T(srcKey(it)));
+    const segs = rubySegs(it);
+    for (const s of segs) {
+      const bt = lg.append("text").attr("font-size", size).attr("stroke-width", 3).text(s.b);
+      const bw = bt.node().getComputedTextLength();
+      let rt = null, rw = 0;
+      if (s.r) {
+        rt = lg.append("text").attr("class", "rb").attr("font-size", size * 0.55).attr("stroke-width", 2.4).text(s.r);
+        rw = rt.node().getComputedTextLength();
+      }
+      const w = Math.max(bw, rw);
+      bt.attr("x", x + w / 2).attr("text-anchor", "middle");
+      if (rt) rt.attr("x", x + w / 2).attr("y", -size * 0.98).attr("text-anchor", "middle");
+      x += w;
+    }
+    const hasRuby = segs.some((s) => s.r);
+    ox = align === "start" ? dx : -x / 2;
+    oy = size * 0.36 + (align === "middle" && hasRuby ? size * 0.25 : 0);
+    // 點擊範圍（透明），讓整個名稱都容易點到
+    lg.insert("rect", "text").attr("x", -2).attr("y", -size * (hasRuby ? 1.6 : 1)).attr("width", x + 4)
+      .attr("height", size * (hasRuby ? 1.95 : 1.35)).attr("fill", "transparent").attr("stroke", "none");
+    lg.on("click", (e) => { e.stopPropagation(); speak(it, lg); });
   }
-  const hasRuby = segs.some((s) => s.r);
-  const ox = align === "start" ? dx : -x / 2;
-  const oy = size * 0.36 + (align === "middle" && hasRuby ? size * 0.25 : 0);
-  // 點擊範圍（透明），讓整個名稱都容易點到
-  lg.insert("rect", "text").attr("x", -2).attr("y", -size * (hasRuby ? 1.6 : 1)).attr("width", x + 4)
-    .attr("height", size * (hasRuby ? 1.95 : 1.35)).attr("fill", "transparent").attr("stroke", "none");
   lg.attr("transform", `translate(${ox},${oy})`);
-  lg.on("click", (e) => { e.stopPropagation(); speak(it, lg); });
   const bb = lg.node().getBBox();
   const l = { g, p, lv: it.lv, key: "c", bb: { x: bb.x + ox, y: bb.y + oy, w: bb.width, h: bb.height } };
   labels.push(l);
   return l;
 }
 
-// 候選位置（螢幕座標的地名外框）：地形在畫面上比地名小時，改放在地形上下左右，不蓋住範圍
+// 候選位置（螢幕座標的地名外框）：放得進自己範圍就置中，否則放外側並以引線指回
 function candidates(l) {
   const t = transform, bb = l.bb, gap = 3;
   const at = (key, x0, y0) => ({ key, r: { x0, y0, x1: x0 + bb.w, y1: y0 + bb.h } });
@@ -825,10 +1054,30 @@ function placeLabels() {
 }
 function applyOptions() {
   const el = svg.node();
-  el.classList.toggle("nonames", !state.names);
+  el.classList.toggle("nonames", !state.names && !quiz.on && !blankMode);
   declutter();
-  el.classList.toggle("nokana", !state.kana);
+  el.classList.toggle("nokana", !state.kana || quiz.on || blankMode);
   el.classList.toggle("noprefs", !state.pref);
+}
+
+// ---------- 勾選後自動縮放到該地形或該縣（一次勾很多個時不縮放） ----------
+function zoomToGeom(geom, point) {
+  if (!projection) return;
+  let t;
+  if (point) {
+    const p = projection(point), k = Math.min(8, Math.max(transform.k, 4));
+    t = d3.zoomIdentity.translate(W / 2 - k * p[0], H / 2 - k * p[1]).scale(k);
+  } else {
+    const [[x0, y0], [x1, y1]] = path.bounds(geom);
+    if (!isFinite(x0)) return;
+    const k = Math.max(0.6, Math.min(8, 0.8 * Math.min(W / Math.max(1, x1 - x0), H / Math.max(1, y1 - y0))));
+    t = d3.zoomIdentity.translate(W / 2 - k * (x0 + x1) / 2, H / 2 - k * (y0 + y1) / 2).scale(k);
+  }
+  zsel.transition().duration(600).call(zoom.transform, t);
+}
+function zoomToItem(it) {
+  const g = geomOf(it);
+  if (g) zoomToGeom(g); else if (it.c) zoomToGeom(null, it.c);
 }
 
 // ---------- 語音 ----------
@@ -872,7 +1121,7 @@ function renderTabs() {
     b.innerHTML = `<span class="sw"></span><span></span><span class="cnt">${n}/${vis.length}</span>`;
     b.querySelector(".sw").style.background = cat.color;
     b.children[1].textContent = catLabel(cat);
-    b.onclick = () => { state.cat = cat.id; persist(); renderTabs(); renderItems(); };
+    b.onclick = () => { state.cat = cat.id; state.found = null; persist(); renderTabs(); renderItems(); };
     tabs.appendChild(b);
   }
 }
@@ -883,12 +1132,17 @@ function renderItems() {
   const box = $("items"); box.textContent = "";
   for (const it of vis) {
     const b = document.createElement("button");
-    b.type = "button"; b.className = "chip"; b.style.setProperty("--c", cat.color);
+    b.type = "button"; b.className = "chip" + (state.found === it.id ? " found" : ""); b.style.setProperty("--c", cat.color);
     b.setAttribute("aria-pressed", String(state.sel.has(it.id)));
     b.title = readingOf(it);
     b.innerHTML = `<span class="box"></span><span></span>`;
     b.children[1].textContent = nameOf(it);
-    b.onclick = () => { state.sel.has(it.id) ? state.sel.delete(it.id) : state.sel.add(it.id); changed(); };
+    b.onclick = () => {
+      const add = !state.sel.has(it.id);
+      add ? state.sel.add(it.id) : state.sel.delete(it.id);
+      changed();
+      if (add) zoomToItem(it);
+    };
     box.appendChild(b);
   }
 }
@@ -896,7 +1150,7 @@ function updateCount() { $("selCount").textContent = [...state.sel].filter((id) 
 function setSheet(open) { $("sheet").classList.toggle("open", open); $("btnSheet").setAttribute("aria-expanded", String(open)); }
 $("btnSheet").onclick = () => setSheet(!$("sheet").classList.contains("open"));
 $("btnSheetClose").onclick = () => setSheet(false);
-document.addEventListener("keydown", (e) => { if (e.key === "Escape") setSheet(false); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") { setSheet(false); closePicker(); $("sugg").hidden = true; } });
 const PREF_FEATS = new Map(topojson.feature(TOPO, TOPO.objects.japan).features.map((f) => [f.properties.id, f]));
 const PREF_LIST = topojson.feature(TOPO, TOPO.objects.japan).features
   .map((f) => ({ id: f.properties.id, ja: f.properties.nam_ja })).sort((a, b) => a.id - b.id);
@@ -916,18 +1170,20 @@ function renderPrefs() {
   }
 }
 function togglePref(p) {
-  const inPref = [...ITEM.values()].filter((it) => (PREFS_OF[it.id] || []).includes(p.id));
+  const inPref = ITEM_LIST.filter((it) => (PREFS_OF[it.id] || []).includes(p.id));
   if (!state.prefs.has(p.id)) {
     state.prefs.add(p.id);
     inPref.forEach((it) => state.sel.add(it.id));
     toast(T("prefAdded", prefName(p, true), inPref.filter(shown).length));
+    renderPrefs(); changed();
+    zoomToGeom(PREF_FEATS.get(p.id));
   } else {
     state.prefs.delete(p.id);
     // 只取消不屬於其他已選縣的地形
     inPref.forEach((it) => { if (!(PREFS_OF[it.id] || []).some((q) => state.prefs.has(q))) state.sel.delete(it.id); });
     toast(T("prefRemoved", prefName(p, true)));
+    renderPrefs(); changed();
   }
-  renderPrefs(); changed();
 }
 function changed() { persist(); renderTabs(); renderItems(); drawFeatures(); }
 
@@ -945,6 +1201,80 @@ for (const [id, key, other] of [["lvPri", "lv1", "lv2"], ["lvExt", "lv2", "lv1"]
     state[key] = e.target.checked; changed();
   };
 }
+
+// ---------- 搜尋 ----------
+// 只輸入共通字（平野、山地、川…）時不列出全部，提示輸入更具體的名稱
+const GENERIC = new Set(["平野", "山地", "山脈", "高地", "高原", "盆地", "台地", "川", "河川", "湖", "湖沼", "湖泊", "半島", "岬", "岬角", "崎", "湾", "灣", "灘", "海峡", "海峽", "水道", "瀬戸", "瀨戶", "海", "島", "島嶼", "諸島", "列島", "山", "岳", "火山", "海流", "暖流", "寒流", "海溝", "海槽", "トラフ", "構造線",
+  "へいや", "さんち", "さんみゃく", "こうち", "こうげん", "ぼんち", "だいち", "かわ", "がわ", "こ", "はんとう", "みさき", "わん", "なだ", "かいきょう", "すいどう", "しま", "じま", "とう", "やま", "さん", "ざん", "だけ", "たけ", "かざん", "かいりゅう", "かいこう"]);
+let suggIdx = -1, suggItems = [];
+function searchItems(q) {
+  const s = q.trim();
+  if (!s) return { list: [] };
+  if (GENERIC.has(s) || GENERIC.has(toJa(s)) || GENERIC.has(toHira(s))) return { generic: true, list: [] };
+  const sJa = toJa(s), sH = toHira(s);
+  const scored = [];
+  for (const it of ITEM_LIST) {
+    const names = [it.n, it.zh];
+    let sc = -1;
+    for (const n of names) {
+      if (n.startsWith(s) || n.startsWith(sJa)) sc = Math.max(sc, 3);
+      else if (n.includes(s) || n.includes(sJa)) sc = Math.max(sc, 2);
+    }
+    if (sc < 0 && it.k && /^[ぁ-ゖー]+$/.test(sH)) {
+      const k = it.k.replace(/、/g, "");
+      if (k.startsWith(sH)) sc = 1.5; else if (k.includes(sH)) sc = 1;
+    }
+    if (sc >= 0) scored.push({ it, sc });
+  }
+  scored.sort((a, b) => b.sc - a.sc || a.it.n.length - b.it.n.length);
+  return { list: scored.slice(0, 8).map((x) => x.it) };
+}
+function renderSugg() {
+  const box = $("sugg"), q = $("q").value;
+  const r = searchItems(q);
+  suggItems = r.list; suggIdx = -1;
+  box.textContent = "";
+  if (!q.trim()) { box.hidden = true; return; }
+  if (r.generic || !r.list.length) {
+    const m = document.createElement("div"); m.className = "msg"; m.textContent = T(r.generic ? "searchGeneric" : "searchNone");
+    box.appendChild(m); box.hidden = false; return;
+  }
+  r.list.forEach((it, i) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.setAttribute("role", "option"); b.id = "sg" + i;
+    b.innerHTML = `<span></span><small></small>`;
+    b.children[0].textContent = nameOf(it);
+    b.children[1].textContent = `${catLabel(it.cat)}${state.lang === "ja" && it.k ? "・" + it.k : ""}`;
+    b.onmousedown = (e) => e.preventDefault();
+    b.onclick = () => gotoItem(it);
+    box.appendChild(b);
+  });
+  box.hidden = false;
+}
+function gotoItem(it) {
+  // 跳到該地形的類別並加粗外框提示（不自動勾選）；被等級篩選藏起來時，自動打開該等級
+  if (!shown(it)) { if (it.lv === 1) state.lv1 = true; else state.lv2 = true; $("lvPri").checked = state.lv1; $("lvExt").checked = state.lv2; }
+  state.cat = it.cat.id; state.found = it.id;
+  $("q").value = nameOf(it); $("sugg").hidden = true;
+  persist(); renderTabs(); renderItems(); drawFeatures();
+  const chip = document.querySelector("#items .chip.found");
+  if (chip) chip.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  const tab = $("tab-" + it.cat.id); if (tab) tab.scrollIntoView({ inline: "nearest", block: "nearest" });
+}
+$("q").addEventListener("input", renderSugg);
+$("q").addEventListener("focus", () => { if ($("q").value.trim()) renderSugg(); });
+$("q").addEventListener("blur", () => setTimeout(() => ($("sugg").hidden = true), 150));
+$("q").addEventListener("keydown", (e) => {
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    if (!suggItems.length) return;
+    e.preventDefault();
+    suggIdx = (suggIdx + (e.key === "ArrowDown" ? 1 : -1) + suggItems.length) % suggItems.length;
+    [...$("sugg").querySelectorAll("button")].forEach((b, i) => b.setAttribute("aria-selected", String(i === suggIdx)));
+  } else if (e.key === "Enter") {
+    e.preventDefault();
+    if (suggItems.length) gotoItem(suggItems[Math.max(0, suggIdx)]);
+  }
+});
 
 // ---------- 群組（登入時存在帳號，否則存在此瀏覽器） ----------
 let groupDoc = null;
@@ -991,44 +1321,185 @@ $("groupForm").onsubmit = (e) => {
 
 // ---------- 輸出圖片 ----------
 const downloadsP = cap("downloads");
+const stamp = () => { const d = new Date(), pad = (n) => String(n).padStart(2, "0"); return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}`; };
+async function svgToBlob(node, w, h) {
+  const clone = node.cloneNode(true);
+  clone.querySelectorAll("title").forEach((t) => t.remove());
+  clone.querySelectorAll(".speaking").forEach((t) => t.classList.remove("speaking"));
+  clone.setAttribute("width", w); clone.setAttribute("height", h);
+  const xml = new XMLSerializer().serializeToString(clone);
+  const img = new Image();
+  img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(xml);
+  await img.decode();
+  const scale = 2, cv = document.createElement("canvas");
+  cv.width = w * scale; cv.height = h * scale;
+  const ctx = cv.getContext("2d"); ctx.scale(scale, scale); ctx.drawImage(img, 0, 0, w, h);
+  return new Promise((r) => cv.toBlob(r, "image/png"));
+}
+// 交付檔案：一般網站直接下載；Claude 版走 downloads；都不行時顯示圖片讓使用者長按另存
+async function deliver(files) {
+  if (!window.claude) {
+    for (const [blob, name] of files) {
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob); a.download = name;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+      await new Promise((r) => setTimeout(r, 400));
+    }
+    return "downloaded";
+  }
+  const dl = await downloadsP;
+  if (dl) {
+    try { for (const [blob, name] of files) await dl.save({ filename: name, data: blob }); return "saved"; }
+    catch (e) { if (e && (e.code === "declined" || e.code === "rate_limited")) return "declined"; }
+  }
+  showModal(T("saveHelp"), files.map(([b]) => URL.createObjectURL(b)));
+  return "modal";
+}
+function showModal(msg, imgs, text) {
+  $("modalMsg").textContent = msg;
+  const box = $("modalImgs"); box.textContent = "";
+  for (const u of imgs || []) { const im = document.createElement("img"); im.src = u; im.alt = ""; box.appendChild(im); }
+  $("modalText").hidden = !text; if (text) { $("modalText").value = text; setTimeout(() => $("modalText").select(), 50); }
+  $("modal").hidden = false;
+}
+$("modalClose").onclick = () => { $("modal").hidden = true; $("modalImgs").querySelectorAll("img").forEach((i) => URL.revokeObjectURL(i.src)); };
 async function exportPNG() {
   const btn = $("btnExport"); btn.disabled = true;
   try {
-    const clone = svg.node().cloneNode(true);
-    clone.querySelectorAll("title").forEach((t) => t.remove());
-    clone.querySelectorAll(".speaking").forEach((t) => t.classList.remove("speaking"));
-    clone.setAttribute("width", W); clone.setAttribute("height", H);
-    const xml = new XMLSerializer().serializeToString(clone);
-    const img = new Image();
-    img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(xml);
-    await img.decode();
-    const scale = 2, cv = document.createElement("canvas");
-    cv.width = W * scale; cv.height = H * scale;
-    const ctx = cv.getContext("2d"); ctx.scale(scale, scale); ctx.drawImage(img, 0, 0, W, H);
-    const blob = await new Promise((r) => cv.toBlob(r, "image/png"));
-    const d = new Date(), pad = (n) => String(n).padStart(2, "0");
-    const filename = `日本地形_${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}.png`;
-    if (!window.claude) {
-      // 一般網站（例如 GitHub Pages）：直接下載
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob); a.download = filename;
-      document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-      toast(T("downloaded")); return;
-    }
-    const dl = await downloadsP;
-    if (dl) {
-      try { await dl.save({ filename, data: blob }); toast(T("savedImg")); return; }
-      catch (e) { if (e && (e.code === "declined" || e.code === "rate_limited")) return; }
-    }
-    const url = URL.createObjectURL(blob);
-    $("modalImg").src = url; $("modal").hidden = false;
+    const r = await deliver([[await svgToBlob(svg.node(), W, H), `日本地形_${stamp()}.png`]]);
+    if (r === "downloaded") toast(T("downloaded")); else if (r === "saved") toast(T("savedImg"));
   } catch (err) {
     toast(T("exportFail") + (err && err.message ? err.message : err));
   } finally { btn.disabled = false; }
 }
 $("btnExport").onclick = exportPNG;
-$("modalClose").onclick = () => { $("modal").hidden = true; URL.revokeObjectURL($("modalImg").src); };
+
+// ---------- 白地圖＋解答 ----------
+function answerKeySvg(list) {
+  // 解答圖：圓圈編號＋地名（日文版附讀音），依數量分成多欄
+  const rows = Math.min(list.length, 30), cols = Math.ceil(list.length / rows), colW = 300, rowH = 26, top = 54;
+  const w = Math.max(360, cols * colW + 40), h = top + rows * rowH + 30;
+  const ns = "http://www.w3.org/2000/svg", s = document.createElementNS(ns, "svg");
+  const sel = d3.select(s).attr("xmlns", ns).attr("viewBox", `0 0 ${w} ${h}`).attr("width", w).attr("height", h);
+  sel.append("style").text('text{font-family:"Hiragino Sans","Yu Gothic","Meiryo","Noto Sans JP",sans-serif;fill:#1e2a23}');
+  sel.append("rect").attr("width", w).attr("height", h).attr("fill", "#fff");
+  sel.append("text").attr("x", 20).attr("y", 34).attr("font-size", 20).attr("font-weight", 700).text(`${T("title")}　${T("answerKey")}`);
+  list.forEach(({ n, it }, i) => {
+    const c = Math.floor(i / rows), r = i % rows, x = 20 + c * colW, y = top + r * rowH;
+    sel.append("circle").attr("cx", x + 10).attr("cy", y + 8).attr("r", 10).attr("fill", "#fff").attr("stroke", "#1e2a23").attr("stroke-width", 1.4);
+    sel.append("text").attr("x", x + 10).attr("y", y + 12).attr("text-anchor", "middle").attr("font-size", String(n).length > 2 ? 9 : 11).attr("font-weight", 700).text(n);
+    const extra = state.lang === "ja" ? `（${readingOf(it)}）` : `（${it.n}）`;
+    sel.append("text").attr("x", x + 28).attr("y", y + 13).attr("font-size", 14).text(nameOf(it) + extra);
+  });
+  return { node: s, w, h };
+}
+async function exportBlank() {
+  if (state.mode === "relief") { toast(T("reliefNo")); return; }
+  if (!labels.length) { toast(T("needOne")); return; }
+  const btn = $("btnBlank"); btn.disabled = true;
+  try {
+    blankMode = true; drawFeatures();
+    const mapBlob = await svgToBlob(svg.node(), W, H);
+    const key = answerKeySvg(blankKey);
+    blankMode = false; drawFeatures();
+    const keyBlob = await svgToBlob(key.node, key.w, key.h);
+    const ts = stamp();
+    const r = await deliver([[mapBlob, `日本地形_白地図_${ts}.png`], [keyBlob, `日本地形_解答_${ts}.png`]]);
+    if (r === "downloaded" || r === "saved") toast(T("blankSaved"));
+  } catch (err) {
+    toast(T("exportFail") + (err && err.message ? err.message : err));
+  } finally { blankMode = false; btn.disabled = false; if (svg.node().classList) drawFeatures(); }
+}
+$("btnBlank").onclick = exportBlank;
+
+// ---------- 測驗 ----------
+function quizStatus() {
+  const total = quiz.ids.length;
+  if (quiz.graded) {
+    const c = quiz.ids.filter((id) => quiz.answers.get(id) === id).length;
+    return T("quizScore", Math.round((c / total) * 100), c, total);
+  }
+  return T("quizProgress", quiz.answers.size, total);
+}
+function renderQuizBar() {
+  $("quizBar").hidden = !quiz.on;
+  document.body.classList.toggle("quiz", quiz.on);
+  if (!quiz.on) return;
+  $("quizStatus").textContent = quizStatus();
+  $("qCheck").disabled = quiz.graded;
+}
+function startQuiz() {
+  if (state.mode === "relief") { toast(T("reliefNo")); return; }
+  const ids = ITEM_LIST.filter((it) => state.sel.has(it.id) && shown(it)).map((it) => it.id);
+  if (ids.length < 2) { toast(T("quizNeed")); return; }
+  quiz.on = true; quiz.graded = false; quiz.ids = ids; quiz.answers = new Map();
+  quiz.pool = d3.shuffle(ids.slice());
+  setSheet(false); closePicker();
+  renderQuizBar(); drawFeatures();
+}
+function exitQuiz() {
+  quiz.on = false; quiz.graded = false; quiz.answers = new Map();
+  closePicker(); renderQuizBar(); drawFeatures();
+}
+function closePicker() { $("picker").hidden = true; svg.selectAll(".qbox.active").classed("active", false); }
+function openPicker(target, ev, lg) {
+  if (quiz.graded) { toast(T("quizDone")); return; }
+  // 標示正在作答的格子
+  svg.selectAll(".qbox.active").classed("active", false);
+  if (lg) lg.select(".qbox").classed("active", true);
+  const list = $("pickList"); list.textContent = "";
+  const used = new Set(quiz.answers.values());
+  const cur = quiz.answers.get(target.id);
+  if (cur) {
+    const c = document.createElement("button"); c.type = "button"; c.className = "clear"; c.textContent = T("quizClear");
+    c.onclick = () => { quiz.answers.delete(target.id); closePicker(); renderQuizBar(); drawFeatures(); };
+    list.appendChild(c);
+  }
+  const free = quiz.pool.filter((id) => !used.has(id));
+  if (!free.length) { const m = document.createElement("div"); m.className = "msg"; m.textContent = T("quizEmpty"); list.appendChild(m); }
+  for (const id of free) {
+    const b = document.createElement("button"); b.type = "button"; b.textContent = nameOf(ITEM.get(id));
+    b.onclick = () => { quiz.answers.set(target.id, id); closePicker(); renderQuizBar(); drawFeatures(); };
+    list.appendChild(b);
+  }
+  const pk = $("picker");
+  pk.hidden = false;
+  if (window.innerWidth > 640 && ev) {
+    const x = Math.min(window.innerWidth - pk.offsetWidth - 8, Math.max(8, ev.clientX + 8));
+    const y = Math.min(window.innerHeight - pk.offsetHeight - 8, Math.max(8, ev.clientY + 8));
+    pk.style.left = x + "px"; pk.style.top = y + "px";
+  }
+}
+$("pickClose").onclick = closePicker;
+$("btnQuiz").onclick = startQuiz;
+$("qCheck").onclick = () => { quiz.graded = true; closePicker(); renderQuizBar(); drawFeatures(); };
+let exitArmed = null;
+$("qExit").onclick = () => {
+  // 誤觸保護：按兩次才退出
+  if (exitArmed) { clearTimeout(exitArmed); exitArmed = null; $("qExit").textContent = T("quizExit"); exitQuiz(); return; }
+  $("qExit").textContent = T("quizExitConfirm");
+  exitArmed = setTimeout(() => { exitArmed = null; $("qExit").textContent = T("quizExit"); }, 3000);
+};
+$("qSave").onclick = async () => {
+  // 測驗結果圖：地圖上的作答內容＋左上角分數
+  const t = svg.append("text").attr("class", "score").attr("x", 14).attr("y", 30).text(`${T("quizTitle")}　${quizStatus()}`);
+  try {
+    const r = await deliver([[await svgToBlob(svg.node(), W, H), `日本地形_テスト_${stamp()}.png`]]);
+    if (r === "downloaded") toast(T("downloaded")); else if (r === "saved") toast(T("savedImg"));
+  } catch (err) { toast(T("exportFail") + (err && err.message ? err.message : err)); }
+  finally { t.remove(); }
+};
+
+// ---------- 分享連結（一般網站版） ----------
+if (!window.claude) $("btnShare").hidden = false;
+$("btnShare").onclick = () => {
+  const url = location.origin + location.pathname + "#" + encodeState();
+  history.replaceState(null, "", url);
+  const done = () => toast(T("shareCopied"));
+  if (navigator.clipboard) navigator.clipboard.writeText(url).then(done, () => showModal(T("shareHelp"), [], url));
+  else showModal(T("shareHelp"), [], url);
+};
 
 // ---------- 縮放 ----------
 $("zIn").onclick = () => zsel.transition().duration(250).call(zoom.scaleBy, 1.6);
@@ -1041,8 +1512,18 @@ $("zAll").onclick = () => {
   zsel.transition().duration(300).call(zoom.transform, t);
 };
 
+// ---------- 側欄收合（寬螢幕） ----------
+function setCollapsed(c) {
+  document.body.classList.toggle("collapsed", c);
+  $("btnExpand").hidden = !c || window.innerWidth < 900;
+  LS.set("collapsed", c);
+}
+$("btnCollapse").onclick = () => setCollapsed(true);
+$("btnExpand").onclick = () => setCollapsed(false);
+window.addEventListener("resize", () => { $("btnExpand").hidden = !document.body.classList.contains("collapsed") || window.innerWidth < 900; });
+
 let toastTimer;
-function toast(msg) { const t = $("toast"); t.textContent = msg; t.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => (t.hidden = true), 2200); }
+function toast(msg) { const t = $("toast"); t.textContent = msg; t.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => (t.hidden = true), 2400); }
 
 function fullRender() { buildBase(); applyOptions(); drawFeatures(); }
 let lastSize = "";
@@ -1059,21 +1540,23 @@ function applyLang() {
   document.querySelectorAll("[data-t]").forEach((el) => { el.textContent = T(el.dataset.t); });
   document.querySelectorAll("[data-t-ph]").forEach((el) => { el.placeholder = T(el.dataset.tPh); });
   document.querySelectorAll("[data-t-aria]").forEach((el) => { el.setAttribute("aria-label", T(el.dataset.tAria)); });
+  document.querySelectorAll("[data-t-title]").forEach((el) => { el.title = T(el.dataset.tTitle); });
   $("map").setAttribute("aria-label", T("mapLabel"));
   $("langJa").setAttribute("aria-pressed", String(L === "ja"));
   $("langZh").setAttribute("aria-pressed", String(L === "zh"));
   $("kanaOpt").hidden = L === "zh";
-  $("dSimple").setAttribute("aria-pressed", String(!state.detail));
-  $("dDetail").setAttribute("aria-pressed", String(state.detail));
+  for (const [id, m] of [["mSimple", "simple"], ["mDetail", "detail"], ["mRelief", "relief"]]) $(id).setAttribute("aria-pressed", String(state.mode === m));
+  $("mRelief").hidden = !RELIEF;
   svg.select(".credit:not(.credit2)").text(T("credit"));
-  svg.select(".credit2").text(T("credit2"));
+  renderQuizBar();
 }
-for (const [id, v] of [["dSimple", false], ["dDetail", true]]) {
-  $(id).onclick = () => { if (state.detail === v) return; state.detail = v; persist(); applyLang(); drawFeatures(); };
+for (const [id, m] of [["mSimple", "simple"], ["mDetail", "detail"], ["mRelief", "relief"]]) {
+  $(id).onclick = () => { if (state.mode === m) return; state.mode = m; persist(); applyLang(); drawFeatures(); };
 }
 for (const [id, L] of [["langJa", "ja"], ["langZh", "zh"]]) {
   $(id).onclick = () => { if (state.lang === L) return; state.lang = L; persist(); applyLang(); renderGroups(); renderPrefs(); changed(); };
 }
+setCollapsed(LS.get("collapsed", false) === true);
 applyLang(); renderTabs(); renderItems(); renderPrefs(); renderGroups();
 document.fonts && document.fonts.ready.then(() => { if (lastSize) drawFeatures(); });
 </script>

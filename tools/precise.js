@@ -124,9 +124,24 @@ for (const it of items("plateau")) {
   const karst = KARST.has(it.n);
   const ok = karst ? (c) => c.s === "1" : (c) => TERR.has(c.m) || VFOOT.has(c.m);
   const box = boxOf(it.p, karst ? 0.03 : 0.05);
-  const seed = findSeed(center(it), ok);
+  let cells;
+  if (it.n === "シラス台地") {
+    // 被河谷切成許多碎塊：收集範圍內全部「シラス台地」格子，留下 4 格以上的塊
+    const all = new Set();
+    for (const [k, c] of grid) { const [i, j] = IJ(k); if (c && c.m === "15" && inBox(box, i, j)) all.add(k); }
+    cells = new Set();
+    const seen = new Set();
+    for (const k of all) {
+      if (seen.has(k)) continue;
+      const comp = [], cq = [k]; seen.add(k);
+      while (cq.length) { const c = cq.pop(); comp.push(c); const [a, b] = IJ(c); for (const [di, dj] of N4) { const n = K(a + di, b + dj); if (all.has(n) && !seen.has(n)) { seen.add(n); cq.push(n); } } }
+      if (comp.length >= 4) comp.forEach((c) => cells.add(c));
+    }
+  }
+  const seed = cells ? [...cells][0] : findSeed(center(it), ok);
   if (!seed) { log.push(`沿用手繪：${it.n}（附近找不到台地格子）`); continue; }
-  const cells = new Set([seed]), q = [seed];
+  if (!cells) cells = new Set([seed]);
+  const q = it.n === "シラス台地" ? [] : [seed];
   while (q.length) {
     const [i, j] = IJ(q.pop());
     for (const [di, dj] of N4) {
@@ -144,20 +159,24 @@ for (const it of items("plateau")) {
 
 // ---------- 3. 山脈・山地：剩下的山地・丘陵格子分給最近的脊線 ----------
 const kmPerDeg = (lat) => [111.32 * Math.cos(lat * Math.PI / 180), 110.57];
+// 回傳 {d: 到脊線的距離 km, end: 最近點是否落在脊線頭尾端點之外}
 function distToSpine(p, s) {
   const [kx, ky] = kmPerDeg(p[1]);
-  let best = Infinity;
+  let best = { d: Infinity, end: false };
   for (let a = 0; a < s.length - 1; a++) {
     const ax = (s[a][0] - p[0]) * kx, ay = (s[a][1] - p[1]) * ky, bx = (s[a + 1][0] - p[0]) * kx, by = (s[a + 1][1] - p[1]) * ky;
     const dx = bx - ax, dy = by - ay, L = dx * dx + dy * dy || 1e-9;
-    const t = Math.max(0, Math.min(1, -(ax * dx + ay * dy) / L));
-    best = Math.min(best, Math.hypot(ax + t * dx, ay + t * dy));
+    const raw = -(ax * dx + ay * dy) / L, t = Math.max(0, Math.min(1, raw));
+    const d = Math.hypot(ax + t * dx, ay + t * dy);
+    const end = (a === 0 && raw < 0) || (a === s.length - 2 && raw > 1);
+    if (d < best.d) best = { d, end };
   }
   return best;
 }
+// 側面容許 hw + max(10, hw)；頭尾端點外只容許 hw/2 + 3 km，避免山脈越過端點吃進相鄰山地（例：生駒→金剛、奥羽→下北）
 const ranges = items("range").map((it) => {
-  const hw = it.w / 2, lim = hw + Math.max(10, hw);
-  return { it, lim, box: boxOf(it.s, lim / 90 + 0.05), r: { n: it.n, cells: new Set(), layer: "excl" } };
+  const hw = it.w / 2, lim = hw + Math.max(10, hw), limEnd = hw / 2 + 3;
+  return { it, hw, lim, limEnd, box: boxOf(it.s, lim / 90 + 0.05), core: new Set(), r: { n: it.n, cells: new Set(), layer: "excl" } };
 });
 for (const [k, c] of grid) {
   if (!c || !(MTN.has(c.m) || HILL.has(c.m)) || owner.has(k) || plateauCells.has(k)) continue;
@@ -165,10 +184,10 @@ for (const [k, c] of grid) {
   let best = null;
   for (const R of ranges) {
     if (!inBox(R.box, i, j)) continue;
-    const d = distToSpine(cellCenter(i, j), R.it.s);
-    if (d <= R.lim && (!best || d < best.d)) best = { d, R };
+    const { d, end } = distToSpine(cellCenter(i, j), R.it.s);
+    if (d <= (end ? R.limEnd : R.lim) && (!best || d < best.d)) best = { d, R };
   }
-  if (best) best.R.r.cells.add(k);
+  if (best) { best.R.r.cells.add(k); if (best.d <= best.R.hw) best.R.core.add(k); }
 }
 for (const R of ranges) {
   // 只留下大於 15 格的連通塊
@@ -181,7 +200,8 @@ for (const R of ranges) {
       const [a, b] = IJ(c);
       for (const [di, dj] of N4) { const n = K(a + di, b + dj); if (R.r.cells.has(n) && !seen.has(n)) { seen.add(n); q.push(n); } }
     }
-    if (comp.length >= 15) comp.forEach((c) => keep.add(c));
+    // 只留下 15 格以上、且有格子落在脊線帶寬內的連通塊（隔海或離太遠的零碎山地不算）
+    if (comp.length >= 15 && comp.some((c) => R.core.has(c))) comp.forEach((c) => keep.add(c));
   }
   R.r.cells = keep;
   if (!keep.size) { log.push(`沿用手繪：${R.it.n}（找不到山地格子）`); continue; }
