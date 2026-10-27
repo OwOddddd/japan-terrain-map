@@ -72,7 +72,8 @@ button:disabled { cursor: not-allowed; opacity: .5; }
 .opts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding-top: 8px; }
 .actions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .lvrow { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.tabs, .items-head, .items, .fold { grid-column: 1 / -1; min-width: 0; }
+.tabs, .items-head, .items, .fold, .vcredit { grid-column: 1 / -1; min-width: 0; }
+.vcredit { margin: 0; font-size: 11px; color: var(--muted); }
 /* 可展開區塊（顯示設定、都道府縣、群組） */
 .fold { border-top: 1px dashed var(--line); padding-top: 8px; }
 .fold > summary { cursor: pointer; font-size: 13px; color: var(--muted); display: flex; align-items: baseline; gap: 8px; list-style: none; user-select: none; }
@@ -355,6 +356,7 @@ body.quiz #btnSheet, body.quiz #btnExport { pointer-events: none; opacity: .45; 
     </form>
   </div>
   </details>
+  <p class="vcredit" data-t="voiceCredit"></p>
   </div>
 </div>
 
@@ -475,14 +477,14 @@ const I18N = {
     note: "範囲・位置は学習用の概略です", hint: "重なる地名は非表示です。拡大すると表示されます",
     saveHelp: "画像を右クリック（スマホは長押し）して保存してください。", close: "閉じる",
     credit: "出典：地球地図日本・地名集日本（国土地理院）", credit2: "国土数値情報 河川・湖沼・土地分類メッシュ（国土交通省）を加工して作成", mapLabel: "日本地形マップ",
-    creditRelief: "標高：地理院タイル（標高タイル）を加工して作成",
+    creditRelief: "標高：地理院タイル（標高タイル）を加工して作成", voiceCredit: "音声：VOICEVOX:剣崎雌雄",
     srcRiver: "河道：国土数値情報（河川）", srcLake: "湖岸線：国土数値情報（湖沼）", srcArea: "範囲：国土数値情報（土地分類メッシュ）から作成", srcSnap: "範囲：学習用の概略（1 km 格子に合わせて調整）",
     srcGsi: "位置：国土地理院「地名集日本」", srcRough: "位置・範囲：学習用の概略",
     noGroups: "グループはまだありません。地形を選んで名前を付けると保存できます", applyGroup: "このグループを表示",
     delGroup: (n) => `グループ「${n}」を削除`, applied: (n) => `「${n}」を表示しました`, saved: (n) => `「${n}」を保存しました`,
     updated: (n) => `「${n}」を更新しました`, needName: "グループ名を入力してください", needSel: "先に地形を選んでください",
     localOnly: "グループはこのブラウザだけに保存されました", needLevel: "表示する範囲を 1 つ以上選んでください",
-    noSpeech: "このブラウザは読み上げに対応していません", noVoice: "この端末には日本語の音声がありません（此裝置沒有日語語音）", reliefFail: "起伏図を読み込めませんでした（ネット接続が必要です）",
+    noSpeech: "このブラウザは読み上げに対応していません", noVoice: "この端末には日本語の音声がありません", reliefFail: "起伏図を読み込めませんでした（ネット接続が必要です）",
     downloaded: "画像をダウンロードしました", savedImg: "画像を保存しました", exportFail: "保存できませんでした：",
     legend: "標高（m）", collapse: "パネルを閉じる", expand: "≡ メニュー",
     searchPh: "地名を検索（例：関東、かんとう）", searchGeneric: "もう少し具体的に入力してください（例：「関東平野」なら「関東」）", searchNone: "見つかりません",
@@ -519,14 +521,14 @@ const I18N = {
     note: "範圍與位置為學習用概略圖", hint: "部分地名重疊已隱藏，放大即可顯示",
     saveHelp: "在圖片上按右鍵（手機長按）即可另存。", close: "關閉",
     credit: "出處：地球地圖日本・地名集日本（國土地理院）", credit2: "國土數值情報 河川・湖沼・土地分類網格（國土交通省）經加工製作", mapLabel: "日本地形地圖",
-    creditRelief: "標高：地理院圖磚（標高圖磚）經加工製作",
+    creditRelief: "標高：地理院圖磚（標高圖磚）經加工製作", voiceCredit: "日語語音：VOICEVOX:剣崎雌雄",
     srcRiver: "河道：國土數值情報（河川）", srcLake: "湖岸線：國土數值情報（湖沼）", srcArea: "範圍：依國土數值情報（土地分類網格）製作", srcSnap: "範圍：學習用概略值（依 1 km 網格調整）",
     srcGsi: "位置：國土地理院「地名集日本」", srcRough: "位置・範圍：學習用概略值",
     noGroups: "尚無群組，勾選後輸入名稱即可儲存", applyGroup: "套用這個群組",
     delGroup: (n) => `刪除群組 ${n}`, applied: (n) => `已套用「${n}」`, saved: (n) => `已儲存「${n}」`,
     updated: (n) => `已更新「${n}」`, needName: "請輸入群組名稱", needSel: "請先勾選地形",
     localOnly: "群組只儲存在這個瀏覽器", needLevel: "顯示範圍至少要勾一個",
-    noSpeech: "這個瀏覽器不支援語音朗讀", noVoice: "此裝置沒有中文語音（この端末には中国語の音声がありません）", reliefFail: "無法載入起伏圖（需要網路連線）",
+    noSpeech: "這個瀏覽器不支援語音朗讀", noVoice: "此裝置沒有中文語音", reliefFail: "無法載入起伏圖（需要網路連線）",
     downloaded: "圖片已下載", savedImg: "圖片已儲存", exportFail: "輸出失敗：",
     legend: "標高（m）", collapse: "收合面板", expand: "≡ 選單",
     searchPh: "搜尋地名（例：關東、かんとう）", searchGeneric: "請輸入更具體的名稱（例：關東平野→「關東」）", searchNone: "找不到符合的地形",
@@ -1326,12 +1328,39 @@ function pickVoice() {
   zhVoice = zs.find((v) => /TW|Hant/i.test(v.lang)) || zs[0] || null;
 }
 if ("speechSynthesis" in window) { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
+// 日語讀音：預先用 VOICEVOX（剣崎雌雄）產生的音檔，每個類別一個 MP3，點到該類別時才下載
+// VOICE：{永久編號: [類別, 起點秒, 長度秒]}；下載或解碼失敗（例如離線）時改用裝置語音
+const VOICE = /*__VOICE__*/null;
+let audioCtx = null, voiceSrc = null;
+const voiceBufs = {};
 function speak(it, lg) {
+  const v = state.lang === "ja" && VOICE && VOICE[it.i];
+  if (v) {
+    const [cat, start, dur] = v;
+    audioCtx ||= new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === "suspended") audioCtx.resume();
+    voiceBufs[cat] ||= fetch(`voice/${cat}.mp3`).then((r) => { if (!r.ok) throw r.status; return r.arrayBuffer(); })
+      .then((b) => new Promise((ok, ng) => audioCtx.decodeAudioData(b, ok, ng)));
+    voiceBufs[cat].then((buf) => {
+      if (voiceSrc) try { voiceSrc.stop(); } catch {}
+      if ("speechSynthesis" in window) speechSynthesis.cancel();
+      const src = audioCtx.createBufferSource();
+      src.buffer = buf; src.connect(audioCtx.destination);
+      labelG.selectAll(".lbl").classed("speaking", false);
+      lg.classed("speaking", true);
+      src.onended = () => lg.classed("speaking", false);
+      src.start(0, start, dur); voiceSrc = src;
+    }).catch(() => { delete voiceBufs[cat]; speakDevice(it, lg); });
+    return;
+  }
+  speakDevice(it, lg);
+}
+function speakDevice(it, lg) {
   if (!("speechSynthesis" in window)) { toast(T("noSpeech")); return; }
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(readingOf(it).replace(/、/g, "。"));
   const voice = state.lang === "zh" ? zhVoice : jaVoice;
-  // 找不到對應語言的語音時不朗讀（避免用別種語言的聲音念），改顯示提示；提示附另一種語言，切換語言的使用者也看得懂
+  // 找不到對應語言的語音時不朗讀（避免用別種語言的聲音念），改以目前介面語言提示缺少哪種語音
   if (!voice && speechSynthesis.getVoices().length) { toast(T("noVoice")); return; }
   u.lang = state.lang === "zh" ? "zh-TW" : "ja-JP"; u.rate = 0.9;
   if (voice) u.voice = voice;

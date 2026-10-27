@@ -12,9 +12,13 @@ html = html
     ...JSON.parse(fs.readFileSync(p("src/data/relief.json"), "utf8")),
     img: "relief.png", imgGray: "relief_gray.png",
   }))
+  // 日語讀音音檔（tools/voice.js 產生）：索引內嵌，MP3 放在 voice/ 點到時才下載
+  .replace("/*__VOICE__*/null", () => fs.readFileSync(p("src/data/voice/voice.json"), "utf8").trim())
   .replace("/*__TERRAIN__*/", () => fs.readFileSync(p("src/terrain.js"), "utf8"));
 fs.writeFileSync(p("japan-terrain.html"), html);
 for (const f of ["relief.png", "relief_gray.png"]) fs.copyFileSync(p("src/data/" + f), p(f));
+fs.mkdirSync(p("voice"), { recursive: true });
+for (const f of fs.readdirSync(p("src/data/voice"))) if (f.endsWith(".mp3")) fs.copyFileSync(p("src/data/voice/" + f), p("voice/" + f));
 
 // 一般網頁版：補上 doctype、語系與手機 viewport（template 第一行已有 charset）
 fs.writeFileSync(p("index.html"), `<!doctype html>
