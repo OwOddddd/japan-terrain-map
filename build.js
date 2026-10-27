@@ -7,13 +7,14 @@ html = html
   .replace("/*__REAL__*/null", () => JSON.stringify({ rivers: JSON.parse(fs.readFileSync(p("src/data/rivers.json"), "utf8")), lakes: JSON.parse(fs.readFileSync(p("src/data/lakes.json"), "utf8"))}))
   .replace("/*__PRECISE__*/null", () => fs.readFileSync(p("src/data/precise.topojson"), "utf8").trim())
   .replace("/*__PREFS__*/null", () => fs.readFileSync(p("src/data/prefs.json"), "utf8").trim())
+  // 起伏圖不內嵌（約佔首次傳輸量 6 成），勾選時才從同一資料夾載入
   .replace("/*__RELIEF__*/null", () => JSON.stringify({
     ...JSON.parse(fs.readFileSync(p("src/data/relief.json"), "utf8")),
-    img: "data:image/png;base64," + fs.readFileSync(p("src/data/relief.png")).toString("base64"),
-    imgGray: "data:image/png;base64," + fs.readFileSync(p("src/data/relief_gray.png")).toString("base64"),
+    img: "relief.png", imgGray: "relief_gray.png",
   }))
   .replace("/*__TERRAIN__*/", () => fs.readFileSync(p("src/terrain.js"), "utf8"));
 fs.writeFileSync(p("japan-terrain.html"), html);
+for (const f of ["relief.png", "relief_gray.png"]) fs.copyFileSync(p("src/data/" + f), p(f));
 
 // 一般網頁版：補上 doctype、語系與手機 viewport（template 第一行已有 charset）
 fs.writeFileSync(p("index.html"), `<!doctype html>
