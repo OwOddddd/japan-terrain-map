@@ -116,6 +116,9 @@ button:disabled { cursor: not-allowed; opacity: .5; }
   border: 1px solid var(--line); border-radius: 6px; padding: 3px 9px 3px 7px; font-size: 13px;
   background: transparent; user-select: none;
 }
+.types { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 5px; font-size: 12px; color: var(--muted); }
+.types button { border: 1px dashed var(--line); background: transparent; border-radius: 999px; padding: 2px 9px; font-size: 12px; }
+.types button[aria-pressed="true"] { border-style: solid; border-color: var(--accent); background: var(--accent-soft); font-weight: 700; }
 .chip .box { width: 12px; height: 12px; border-radius: 3px; border: 1.5px solid var(--muted); flex: none; box-sizing: border-box; }
 .chip[aria-pressed="true"] { border-color: var(--c); background: color-mix(in srgb, var(--c) 14%, transparent); }
 .chip[aria-pressed="true"] .box { background: var(--c); border-color: var(--c); }
@@ -167,6 +170,12 @@ button:disabled { cursor: not-allowed; opacity: .5; }
 }
 .quizbar b { font-variant-numeric: tabular-nums; }
 .quizbar.multi { border-radius: 14px; }
+.qdlg { display: flex; flex-direction: column; gap: 8px; max-width: 360px; }
+.qdlg h2 { margin: 0 0 4px; font-size: 16px; }
+.qdlg > .btn { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; padding: 8px 12px; }
+.qdlg small { color: var(--muted); font-size: 12px; }
+.hazlink { position: fixed; z-index: 40; background: var(--panel); color: var(--accent); border: 1px solid var(--line); border-radius: 6px; padding: 4px 9px; font-size: 12px; box-shadow: 0 4px 12px rgba(0,0,0,.15); text-decoration: none; }
+.qask { flex-basis: 100%; text-align: center; font-size: 15px; font-weight: 700; }
 .qregions { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; flex-basis: 100%; }
 .qregions:empty { display: none; }
 .qregions button { font: inherit; font-size: 12px; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg); color: inherit; cursor: pointer; }
@@ -321,6 +330,7 @@ body.quiz #btnSheet, body.quiz #btnExport { pointer-events: none; opacity: .45; 
     </span>
     <label class="opt slider" id="opacityOpt" hidden><span data-t="opacity"></span>
       <input type="range" id="opacity" min="0" max="100" step="5"> <b id="opacityVal"></b></label>
+    <label class="opt"><input type="checkbox" id="optPlates"> <span data-t="plates"></span></label>
     <label class="opt"><input type="checkbox" id="optNames" checked> <span data-t="names"></span></label>
     <label class="opt" id="kanaOpt"><input type="checkbox" id="optKana" checked> <span data-t="kana"></span></label>
     <label class="opt"><input type="checkbox" id="optPref" checked> <span data-t="pref"></span></label>
@@ -341,6 +351,7 @@ body.quiz #btnSheet, body.quiz #btnExport { pointer-events: none; opacity: .45; 
     <button class="btn small" id="btnAll" type="button" data-t="all"></button>
     <button class="btn small" id="btnNone" type="button" data-t="none"></button>
   </div>
+  <div class="types" id="types" hidden></div>
   <div class="items" id="items"></div>
   <details class="fold" id="foldPrefs">
   <summary><span data-t="prefsTitle"></span></summary>
@@ -373,6 +384,7 @@ body.quiz #btnSheet, body.quiz #btnExport { pointer-events: none; opacity: .45; 
   <div class="quizbar" id="quizBar" hidden>
     <span data-t="quizTitle"></span>
     <b id="quizStatus"></b>
+    <span class="qask" id="qAsk" hidden></span>
     <span class="qregions" id="qRegions"></span>
     <button class="btn small primary" id="qCheck" type="button" data-t="quizCheck"></button>
     <button class="btn small" id="qSave" type="button" data-t="quizSave"></button>
@@ -382,6 +394,16 @@ body.quiz #btnSheet, body.quiz #btnExport { pointer-events: none; opacity: .45; 
   <div class="hint" id="dcHint" hidden data-t="hint"></div>
 </div>
 
+<div class="modal" id="quizDlg" hidden>
+  <div class="box qdlg" role="dialog" aria-labelledby="qdTitle">
+    <h2 id="qdTitle" data-t="quizMode"></h2>
+    <button class="btn" type="button" id="qmName"><b data-t="qmName"></b><small data-t="qmNameD"></small></button>
+    <button class="btn" type="button" id="qmPlace"><b data-t="qmPlace"></b><small data-t="qmPlaceD"></small></button>
+    <button class="btn" type="button" id="qmType"><b data-t="qmType"></b><small data-t="qmTypeD"></small></button>
+    <div class="prow end"><button class="btn" type="button" id="qmCancel" data-t="cancel"></button></div>
+  </div>
+</div>
+<a class="hazlink" id="hazLink" target="_blank" rel="noopener" hidden></a>
 <div class="picker" id="picker" hidden role="dialog">
   <div class="picker-head"><span data-t="quizPick"></span><button type="button" id="pickClose" aria-label="×">×</button></div>
   <div class="picker-list" id="pickList"></div>
@@ -456,6 +478,7 @@ const MAP_STYLE = `
 .psel-halo{stroke:#fff;stroke-width:4.5;stroke-opacity:.85}
 .psel{stroke:#1f2a44;stroke-width:2}
 .lbl.speaking text{stroke:#ffe27a}
+.plname{font-family:"Hiragino Sans","Yu Gothic","Meiryo","Noto Sans JP",sans-serif;font-size:13px;font-weight:700;fill:#a8321f;fill-opacity:.75;paint-order:stroke;stroke:#fff;stroke-width:3;letter-spacing:.08em;pointer-events:none}
 .credit,.legend text,.score{font-family:"Hiragino Sans","Yu Gothic","Meiryo","Noto Sans JP",sans-serif}
 .credit{fill:#5a6b62;paint-order:stroke;stroke:#fff;stroke-width:3;stroke-linejoin:round}
 .legend text{font-size:10px;fill:#2a332e}
@@ -467,7 +490,17 @@ const MAP_STYLE = `
 
 const I18N = {
   ja: {
-    viewSettings: "表示設定", reliefOff: "起伏図なし",
+    viewSettings: "表示設定", reliefOff: "起伏図なし", plates: "プレート境界",
+    plPA: "太平洋プレート", plNA: "北アメリカプレート", plEU: "ユーラシアプレート", plPH: "フィリピン海プレート",
+    hazOpen: "重ねるハザードマップで見る ↗", typeLabel: "種類：",
+    type_caldera: "カルデラ湖", type_lagoon: "海跡湖・潟湖", type_fault: "断層湖", type_dammed: "堰止湖", type_fan: "扇状地", type_delta: "三角州",
+    type_terrace: "段丘", type_spit: "砂州・砂嘴", type_dune: "砂丘", type_ria: "リアス海岸", type_beach: "砂浜海岸", type_reclaim: "干拓地",
+    type_wetland: "湿原・干潟", type_volcanic: "火山地形", type_karst: "カルスト", type_gorge: "峡谷", type_tombolo: "陸繋島",
+    quizMode: "テストの形式", qmName: "地名を答える", qmNameD: "地図の空欄に地名を選んで入れます",
+    qmPlace: "場所を答える", qmPlaceD: "出題された地名の場所を地図上でタップします",
+    qmType: "種類を答える", qmTypeD: "カルデラ湖・扇状地などの種類を選びます（種類のある地形だけ）",
+    placeAsk: (n) => `「${n}」はどこ？`, placeRight: "正解", placeWrong: (n) => `不正解（「${n}」ではありません）`,
+    placeOther: "この地方は終わりました。ほかの地方を選んでください", placeDone: "全部答えました。「答え合わせ」を押してください",
     reliefColor: "起伏図（カラー）", reliefGray: "起伏図（グレー）", fossa: "フォッサマグナ",
     simple: "簡易", detail: "推定範囲", unofficial: "※公式の境界ではありません", aliasOf: (a) => `別名：${a}`, relief: "起伏図", opacity: "地形の不透明度", detailLabel: "範囲の表し方",
     prefsTitle: "都道府県（選ぶと、その都道府県に一部でもかかる地形をすべて選択）",
@@ -511,7 +544,17 @@ const I18N = {
     quizEmpty: "残りの地名はありません。入れ替えるには、使った欄を空欄に戻してください", quizDone: "答え合わせ済みです",
   },
   zh: {
-    viewSettings: "顯示設定", reliefOff: "無起伏圖",
+    viewSettings: "顯示設定", reliefOff: "無起伏圖", plates: "板塊邊界",
+    plPA: "太平洋板塊", plNA: "北美板塊", plEU: "歐亞板塊", plPH: "菲律賓海板塊",
+    hazOpen: "在災害潛勢地圖查看 ↗", typeLabel: "類型：",
+    type_caldera: "破火山口湖", type_lagoon: "潟湖・海跡湖", type_fault: "斷層湖", type_dammed: "堰塞湖", type_fan: "沖積扇", type_delta: "三角洲",
+    type_terrace: "階地", type_spit: "沙洲・沙嘴", type_dune: "沙丘", type_ria: "谷灣式海岸", type_beach: "沙灘海岸", type_reclaim: "干拓地",
+    type_wetland: "濕原・潮間帶", type_volcanic: "火山地形", type_karst: "喀斯特", type_gorge: "峽谷", type_tombolo: "陸連島",
+    quizMode: "測驗方式", qmName: "回答地名", qmNameD: "在地圖空格中選入地名",
+    qmPlace: "回答位置", qmPlaceD: "依題目的地名，在地圖上點出位置",
+    qmType: "回答類型", qmTypeD: "選擇破火山口湖、沖積扇等類型（只考有類型的地形）",
+    placeAsk: (n) => `「${n}」在哪裡？`, placeRight: "答對了", placeWrong: (n) => `答錯了（這裡不是「${n}」）`,
+    placeOther: "這個地方已答完，請選其他地方", placeDone: "全部答完了，請按「對答案」",
     reliefColor: "彩色起伏圖", reliefGray: "灰階起伏圖", fossa: "大地溝帶",
     simple: "簡易", detail: "推定範圍", unofficial: "※非官方邊界", aliasOf: (a) => `別名：${a}`, relief: "起伏圖", opacity: "地形不透明度", detailLabel: "範圍顯示方式",
     prefsTitle: "都道府縣（選取後，只要有一部分在該縣內的地形都會一起勾選）",
@@ -557,13 +600,16 @@ const I18N = {
 };
 const CAT_ZH = { range: "山脈・山地", volcano: "火山", mountain: "山", plain: "平野", plateau: "台地・高原", basin: "盆地",
   river: "河川", lake: "湖泊", peninsula: "半島", cape: "岬角", bay: "灣・灘", sea: "海・海峽・水道", current: "海流",
-  island: "島嶼", isgroup: "諸島・列島", trench: "海溝・海槽", fault: "構造線", landmark: "代表地形" };
+  island: "島嶼", isgroup: "諸島・列島", infra: "用水・聯絡橋", hazard: "災害", trench: "海溝・海槽", fault: "構造線", landmark: "代表地形" };
 // 中文名稱：日文新字體轉繁體，「ヶ」省略、「の／ノ」改「之」；片假名名稱另外翻譯
 const ZH_NAME = { "シラス台地": "白砂台地", "四国カルスト": "四國喀斯特", "サロマ湖": "佐呂間湖", "オホーツク海": "鄂霍次克海",
   "東シナ海": "東海", "フィリピン海": "菲律賓海", "トカラ海峡": "吐噶喇海峽", "トカラ列島": "吐噶喇列島", "リマン海流": "里曼寒流",
   "相模トラフ": "相模海槽", "駿河トラフ": "駿河海槽", "南海トラフ": "南海海槽", "フォッサマグナ": "大地溝帶",
   "黒潮（日本海流）": "黑潮（日本暖流）", "親潮（千島海流）": "親潮（千島寒流）", "対馬海流": "對馬暖流",
-  "尖閣諸島": "釣魚臺列嶼（尖閣諸島）", "竹島": "獨島（竹島）",
+  "尖閣諸島": "釣魚臺列嶼（尖閣諸島）", "竹島": "獨島（竹島）", "日本アルプス": "日本阿爾卑斯", "姶良カルデラ": "姶良破火山口",
+  "神戸・鳴門ルート": "神戶・鳴門路線", "児島・坂出ルート": "兒島・坂出路線", "尾道・今治ルート": "尾道・今治路線",
+  "南海トラフ地震の想定震源域": "南海海槽地震預估震源區", "ゼロメートル地帯（東京湾岸）": "零公尺地帶（東京灣岸）",
+  "ゼロメートル地帯（濃尾平野）": "零公尺地帶（濃尾平野）", "ゼロメートル地帯（大阪湾岸）": "零公尺地帶（大阪灣岸）",
   "ニセコアンヌプリ": "二世古安努普利", "サロベツ原野": "薩羅別原野" };
 const ZH_CHAR = Object.fromEntries([..."両兩乗乘亀龜児兒剣劍剱劍国國塩鹽増增壱壹売賣奥奧対對峡峽広廣恋戀択擇曽曾来來桜櫻歩步歯齒沢澤浅淺浜濱湾灣湿濕瀬瀨焼燒状狀狭狹礼禮禅禪穂穗竜龍総總経經縄繩蔵藏讃讚豊豐軽輕辺邊関關隠隱静靜騨驒黒黑黄黃横橫徳德糸絲与與会會猪豬内內戸戶万萬予豫恵惠釈釋摂攝属屬体體氷冰条條砺礪払拂荘莊"]
   .reduce((a, c, i, arr) => (i % 2 ? a : [...a, [c, arr[i + 1]]]), []));
@@ -683,6 +729,7 @@ const state = {
   // 起伏圖："" 不顯示、"color" 彩色、"gray" 灰階（舊版的 true 視為彩色）
   relief: oldMode === "relief" || LS.get("relief", "") === true ? "color" : ["color", "gray"].includes(LS.get("relief", "")) ? LS.get("relief", "") : "",
   opacity: +LS.get("opacity", 50),
+  plates: LS.get("plates", false) === true,
   prefs: new Set(LS.get("prefs", [])),
   found: null,
 };
@@ -690,7 +737,7 @@ if (!RELIEF) state.relief = "";
 const T = (k, ...a) => { const v = I18N[state.lang][k]; return typeof v === "function" ? v(...a) : v; };
 if (!CATS.some((c) => c.id === state.cat)) state.cat = CATS[0].id;
 let groups = LS.get("groups", []);
-const persist = () => { LS.set("sel", [...state.sel]); LS.set("cat", state.cat); LS.set("names", state.names); LS.set("kana", state.kana); LS.set("pref", state.pref); LS.set("lv1", state.lv1); LS.set("lv2", state.lv2); LS.set("lv3", state.lv3); LS.set("lang", state.lang); LS.set("mode", state.mode); LS.set("relief", state.relief); LS.set("opacity", state.opacity); LS.set("prefs", [...state.prefs]); };
+const persist = () => { LS.set("sel", [...state.sel]); LS.set("cat", state.cat); LS.set("names", state.names); LS.set("kana", state.kana); LS.set("pref", state.pref); LS.set("lv1", state.lv1); LS.set("lv2", state.lv2); LS.set("lv3", state.lv3); LS.set("plates", state.plates); LS.set("lang", state.lang); LS.set("mode", state.mode); LS.set("relief", state.relief); LS.set("opacity", state.opacity); LS.set("prefs", [...state.prefs]); };
 // 只顯示並操作有勾選的等級（主要／次要1／次要2）
 const shown = (it) => state["lv" + it.lv];
 const shownItems = (cat) => cat.items.filter(shown);
@@ -744,6 +791,7 @@ const prefMesh = topojson.mesh(TOPO, TOPO.objects.japan, (a, b) => a !== b);
 const coastMesh = topojson.mesh(TOPO, TOPO.objects.japan, (a, b) => a === b);
 const FIT = { type: "LineString", coordinates: [[129.6, 31.0], [145.9, 45.55]] };
 const FIT_ALL = [[122.8, 24.0], [148.2, 46.0]];
+let plateTexts = [];
 let leaderG, markG, W = 0, H = 0, projection, path, zoomG, labelG, transform = d3.zoomIdentity, labels = [], currents = [], obstacles = [];
 const curve = d3.line().curve(d3.curveCatmullRom.alpha(0.5));
 // 白地圖輸出與測驗用的狀態
@@ -752,7 +800,10 @@ let inkMode = false;
 // 依地方分頁時，這一頁只畫 blankOnly 內的地形，編號從 blankStart 起算
 let blankOnly = null, blankStart = 1, blankRegion = null;
 const inSheet = (it) => state.sel.has(it.id) && shown(it) && (!blankOnly || blankOnly.has(it.id)); // 列印配色（只在輸出白地圖時暫時開啟，不影響平常畫面）
-const quiz = { on: false, ids: [], answers: new Map(), graded: false, pool: [], regions: [], region: null };
+// mode：name＝空格填地名、place＝給地名點位置、type＝空格填類型
+const quiz = { on: false, mode: "name", ids: [], answers: new Map(), graded: false, pool: [], regions: [], region: null, hits: [] };
+const quizKey = (it) => (quiz.mode === "type" ? it.t : it.id);
+const quizRight = (it) => quiz.answers.get(it.id) === quizKey(it);
 // 拖曳、縮放手勢進行中只對整張 SVG 套 CSS transform（由 GPU 處理，不重繪向量），手勢結束才套用真正的座標並重排地名
 let gestureBase = null;
 function applyTransform() { zoomG.attr("transform", transform); placeLabels(); }
@@ -783,6 +834,7 @@ function declutter() {
   const order = labels.map((l, i) => i).sort((a, b) => labels[a].lv - labels[b].lv || a - b);
   for (const i of order) {
     const l = labels[i];
+    if (l.hidden) continue;
     const cs = candidates(l);
     let free = cs.filter((c) => !kept.some((k) => hitRect(c.r, k)));
     let pick = null;
@@ -837,6 +889,7 @@ function buildBase(opt = {}) {
     zoomG.append("image").attr("id", "relief").attr("x", a[0]).attr("y", a[1])
       .attr("width", b[0] - a[0]).attr("height", b[1] - a[1]).attr("preserveAspectRatio", "none").attr("display", "none");
   }
+  zoomG.append("g").attr("id", "plates");
   zoomG.append("g").attr("id", "areas").attr("clip-path", "url(#landClip)");
   zoomG.append("g").attr("id", "bands").attr("clip-path", "url(#landClip)");
   zoomG.append("path").attr("class", "pref").attr("d", path(prefMesh)).attr("vector-effect", "non-scaling-stroke");
@@ -916,6 +969,18 @@ function setReliefImage(sel) {
     .then((u) => { reliefData[k] = u; if (zoomG) drawFeatures(); })
     .catch(() => { delete reliefData[k]; toast(T("reliefFail")); });
 }
+// 板塊邊界（概略）：海溝・海槽（清單中的線）＋北美與歐亞板塊的邊界（日本海東緣〜糸魚川－靜岡構造線）
+const PLATE_TRENCH = ["千島海溝", "日本海溝", "伊豆・小笠原海溝", "相模トラフ", "駿河トラフ", "南海トラフ", "南西諸島海溝"];
+const PLATE_NA_EU = [[141.6,47.0],[140.2,44.5],[139.3,42.5],[139.0,40.5],[138.6,38.8],[137.95,37.3],[137.86,37.0],[137.95,36.3],[138.1,36.0],[138.35,35.55],[138.45,35.05]];
+const PLATE_NAMES = [["plPA", [147.5, 36.0]], ["plNA", [145.0, 46.3]], ["plEU", [134.5, 38.6]], ["plPH", [135.5, 30.3]]];
+function drawPlates() {
+  const g = zoomG.select("#plates"); g.selectAll("*").remove();
+  if (!state.plates) return;
+  const ls = [...PLATE_TRENCH.map((n) => ITEM.get("trench:" + n)).filter(Boolean).map((it) => it.s), PLATE_NA_EU];
+  for (const s of ls) g.append("path").attr("d", path({ type: "LineString", coordinates: s })).attr("fill", "none")
+    .attr("stroke", inkMode ? "#555" : "#c0392b").attr("stroke-opacity", .6).attr("stroke-width", 3).attr("stroke-dasharray", "12 5")
+    .attr("stroke-linecap", "round").attr("vector-effect", "non-scaling-stroke");
+}
 function drawFeatures() {
   if (!zoomG) return;
   const relief = !!(state.relief && RELIEF);
@@ -930,6 +995,7 @@ function drawFeatures() {
   const el = svg.node();
   el.classList.toggle("nonames", !state.names && !quiz.on && !blankMode);
   el.classList.toggle("nokana", !state.kana || quiz.on || blankMode);
+  drawPlates();
   const ps = zoomG.select("#prefSel"); ps.selectAll("*").remove();
   for (const id of state.prefs) {
     const d = path(PREF_FEATS.get(id));
@@ -939,8 +1005,12 @@ function drawFeatures() {
   labelG.selectAll("*").remove();
   leaderG = labelG.append("g").attr("id", "leaders");
   markG = labelG.append("g").attr("id", "marks");
-  labels = []; currents = []; obstacles = [];
+  labels = []; currents = []; obstacles = []; plateTexts = [];
   drawLegend();
+  if (state.plates) for (const [key, c] of PLATE_NAMES) {
+    const t = labelG.append("text").attr("class", "plname").attr("text-anchor", "middle").text(T(key));
+    plateTexts.push({ t, p: projection(c) });
+  }
   const entries = [];
   for (const cat of CATS) {
     for (const it of cat.items) {
@@ -958,7 +1028,8 @@ function drawFeatures() {
       } else if (shape === "line") {
         // 沿岸線段（リアス海岸、砂浜海岸、砂州）、灘的沿岸弧線
         lines.append("path").attr("d", path(geom)).attr("fill", "none").attr("stroke", inkMode ? "#333" : cat.color)
-          .attr("stroke-opacity", .8).attr("stroke-width", k === "water" ? 3 : 5).attr("stroke-linecap", "round").attr("stroke-linejoin", "round")
+          .attr("stroke-opacity", .8).attr("stroke-width", k === "water" || cat.id === "infra" || cat.id === "hazard" ? 3 : 5)
+          .attr("stroke-dasharray", cat.id === "hazard" ? "8 4" : null).attr("stroke-linecap", "round").attr("stroke-linejoin", "round")
           .attr("vector-effect", "non-scaling-stroke");
       } else if (k === "group") {
         // 諸島・列島：以平滑的虛線圈起
@@ -1049,9 +1120,38 @@ function drawFeatures() {
       obstacles.push({ rect: [[q[0] - 6, q[1] - 7], [q[0] + 6, q[1] + 6]], owner: l });
     }
   });
+  if (quiz.on && quiz.mode === "place") quiz.hits = entries.map((e) => ({ it: e.it, ...hitShape(e) }));
   placeLabels();
   declutter();
 }
+// 位置題：每個地形可點選的形狀（基準座標）
+function hitShape(e) {
+  if (e.polys) return { polys: e.polys, area: d3.sum(e.polys, (q) => q.area) };
+  const g = e.geom;
+  if (g && (g.type === "LineString" || g.type === "MultiLineString")) {
+    const ls = g.type === "LineString" ? [g.coordinates] : g.coordinates;
+    return { lines: ls.map((ln) => ln.map((c) => projection(c))), w: e.it.w ? e.it.w * pxPerKm(e.it.s[Math.floor(e.it.s.length / 2)]) / 2 : 0 };
+  }
+  return { pt: projection(e.lonlat) };
+}
+const segDist = (p, a, b) => {
+  const dx = b[0] - a[0], dy = b[1] - a[1], L = dx * dx + dy * dy || 1e-9;
+  const t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / L));
+  return Math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dy);
+};
+function hitAt(bx, by) {
+  const thr = 14 / transform.k, p = [bx, by];
+  let best = null, bestD = Infinity, area = null, areaV = Infinity;
+  for (const h of quiz.hits) {
+    let d = Infinity;
+    if (h.pt) d = Math.hypot(h.pt[0] - bx, h.pt[1] - by);
+    else if (h.lines) for (const ln of h.lines) for (let i = 0; i < ln.length - 1; i++) d = Math.min(d, segDist(p, ln[i], ln[i + 1]) - h.w);
+    else if (h.polys && inPolys(h.polys, bx, by) && h.area < areaV) { area = h.it; areaV = h.area; }
+    if (d < thr && d < bestD) { best = h.it; bestD = d; }
+  }
+  return best || area;
+}
+function quizNext() { return quiz.pool.find((id) => !quiz.answers.has(id) && (!quiz.region || regionOf(ITEM.get(id)) === quiz.region)); }
 
 // 幾何輔助：投影後的多邊形（基準座標）、最大塊、polylabel（範圍內離邊界最遠的點）
 function projectPolys(geom) {
@@ -1116,6 +1216,7 @@ function srcKey(it) {
 // 地名標籤：一般（漢字＋振假名）／白地圖（圓圈編號）／測驗（空格或作答內容）
 function addLabel(it, cat, lonlat, mode) {
   const p = projection(lonlat);
+  let l0 = false; // 位置題作答中：只畫符號，不畫地名
   const g = labelG.append("g");
   // 有範圍或線條的代表地形・灘：不畫點符號，地名置中
   const k = SHAPED(it) ? "shaped" : cat.kind;
@@ -1151,25 +1252,28 @@ function addLabel(it, cat, lonlat, mode) {
     ox = align === "start" ? dx : -r; oy = 0;
   } else if (mode && mode.quiz) {
     // 測驗：未作答顯示空格；答對後顯示答案，答錯時紅字並在下方以藍字顯示正確答案
-    const ans = quiz.answers.get(it.id), fs = 12;
-    const shownTxt = ans ? nameOf(ITEM.get(ans)) : "？";
-    const right = quiz.graded && ans === it.id, wrong = quiz.graded && ans !== it.id;
+    const ans = quiz.answers.get(it.id), fs = 12, place = quiz.mode === "place";
+    // 位置題：作答中不顯示任何地名；評分後顯示地名，答對綠、答錯紅
+    if (place && !quiz.graded) { l0 = true; }
+    const shownTxt = place ? nameOf(it) : !ans ? "？" : quiz.mode === "type" ? typeName(ans) : nameOf(ITEM.get(ans));
+    const right = quiz.graded && ans === quizKey(it), wrong = quiz.graded && !right;
     const tw = lg.append("text").attr("font-size", fs).attr("stroke-width", 0).text(shownTxt);
     const w1 = Math.max(46, tw.node().getComputedTextLength() + 16);
     let w2 = 0, tc = null;
-    if (wrong) {
-      tc = lg.append("text").attr("font-size", fs).attr("stroke-width", 0).attr("fill", "#1d5fc4").text(nameOf(it));
+    if (wrong && !place) {
+      tc = lg.append("text").attr("font-size", fs).attr("stroke-width", 0).attr("fill", "#1d5fc4").text(quiz.mode === "type" ? typeName(it.t) : nameOf(it));
       w2 = tc.node().getComputedTextLength() + 16;
     }
     x = Math.max(w1, w2);
     lg.insert("rect", "text").attr("class", "qbox" + (ans ? " filled" : "")).attr("x", 0).attr("y", -fs - 3).attr("width", x)
-      .attr("height", fs + 9 + (wrong ? fs + 4 : 0)).attr("rx", 4)
+      .attr("height", fs + 9 + (tc ? fs + 4 : 0)).attr("rx", 4)
       .attr("stroke", wrong ? "#c62828" : right ? "#2e7d32" : null).attr("stroke-width", quiz.graded ? 2 : null);
     tw.attr("x", x / 2).attr("y", 0).attr("text-anchor", "middle").attr("fill", wrong ? "#c62828" : right ? "#2e7d32" : ans ? "#1e2a23" : "#8a958d")
-      .attr("text-decoration", wrong && ans ? "line-through" : null);
+      .attr("text-decoration", wrong && ans && !place ? "line-through" : null);
     if (tc) tc.attr("x", x / 2).attr("y", fs + 4).attr("text-anchor", "middle");
     ox = align === "start" ? dx : -x / 2; oy = size * 0.36;
-    lg.on("click", (e) => { e.stopPropagation(); openPicker(it, e, lg); });
+    if (!place) lg.on("click", (e) => { e.stopPropagation(); openPicker(it, e, lg); });
+    if (l0) lg.attr("display", "none");
   } else {
     lg.append("title").text((state.lang === "zh" ? `${it.zh}（${it.n}）` : `${it.n}（${readingOf(it)}）`) + "\n" + T(srcKey(it)));
     const segs = rubySegs(it);
@@ -1194,12 +1298,12 @@ function addLabel(it, cat, lonlat, mode) {
     // 點擊範圍（透明），讓整個名稱都容易點到
     lg.insert("rect", "text").attr("x", -2).attr("y", -size * (hasRuby ? 1.85 : 1)).attr("width", x + 4)
       .attr("height", size * (hasRuby ? 2.2 : 1.35)).attr("fill", "transparent").attr("stroke", "none");
-    lg.on("click", (e) => { e.stopPropagation(); speak(it, lg); });
+    lg.on("click", (e) => { e.stopPropagation(); speak(it, lg); showHazLink(it, e); });
   }
   lg.attr("transform", `translate(${ox},${oy})`);
   const bb = lg.node().getBBox();
   // 沒有符號的地名（範圍、河川、海域）在畫面邊緣時可往內移，避免被切掉；有符號的點狀地形不移
-  const l = { g, p, mk, lo: it.lo, lv: it.lv, key: "c", clamp: !["volcano", "peak", "dot"].includes(k), bb: { x: bb.x + ox, y: bb.y + oy, w: bb.width, h: bb.height } };
+  const l = { g, p, mk, lo: it.lo, hidden: l0, lv: it.lv, key: "c", clamp: !["volcano", "peak", "dot"].includes(k), bb: { x: bb.x + ox, y: bb.y + oy, w: bb.width, h: bb.height } };
   labels.push(l);
   return l;
 }
@@ -1321,6 +1425,7 @@ function placeLabels() {
     const tip = [e.x + ux * 4, e.y + uy * 4], base = [tip[0] - ux * len, tip[1] - uy * len];
     c.head.attr("d", `M${tip}L${base[0] - uy * hw},${base[1] + ux * hw}L${base[0] + uy * hw},${base[1] - ux * hw}Z`);
   }
+  for (const pt of plateTexts) pt.t.attr("x", transform.applyX(pt.p[0])).attr("y", transform.applyY(pt.p[1]));
   for (const l of labels) {
     const cs = candidates(l);
     moveLabel(l, cs.find((c) => c.key === l.key) || cs[0]);
@@ -1355,6 +1460,21 @@ function zoomToItem(it) {
   const g = geomOf(it);
   if (g) zoomToGeom(g); else if (it.c) zoomToGeom(null, it.c);
 }
+
+// 國土地理院「重ねるハザードマップ」：以該地形的位置開啟（點狀放大較多）
+let hazTimer = null;
+function showHazLink(it, ev) {
+  const g = geomOf(it), c = it.c || (g ? d3.geoCentroid(g) : null), a = $("hazLink");
+  if (!c) return;
+  const z = it.c && !it.p && !it.s ? 13 : 10;
+  a.href = `https://disaportal.gsi.go.jp/maps/?ll=${c[1].toFixed(4)},${c[0].toFixed(4)}&z=${z}&base=pale&vs=c1j0l0u0t0h0z0`;
+  a.textContent = T("hazOpen");
+  a.hidden = false;
+  a.style.left = Math.min(window.innerWidth - a.offsetWidth - 8, ev.clientX + 10) + "px";
+  a.style.top = Math.min(window.innerHeight - a.offsetHeight - 8, ev.clientY + 14) + "px";
+  clearTimeout(hazTimer); hazTimer = setTimeout(() => (a.hidden = true), 6000);
+}
+wrap.addEventListener("pointerdown", (e) => { if (!e.target.closest(".lbl")) $("hazLink").hidden = true; });
 
 // ---------- 語音 ----------
 function readingOf(it) { return state.lang === "zh" ? it.zh : it.k || rubySegs(it).map((s) => s.r || s.b).join(""); }
@@ -1429,9 +1549,26 @@ function renderTabs() {
     tabs.appendChild(b);
   }
 }
+// 類型（湖：カルデラ湖等；代表地形：扇状地等）。按一下勾選或取消該類型的全部地形
+const TYPE_ORDER = ["caldera", "lagoon", "fault", "dammed", "fan", "delta", "terrace", "spit", "dune", "ria", "beach", "reclaim", "wetland", "volcanic", "karst", "gorge", "tombolo"];
+const typeName = (t) => T("type_" + t);
+function renderTypes(cat, vis) {
+  const box = $("types"), types = TYPE_ORDER.filter((t) => vis.some((it) => it.t === t));
+  box.hidden = !types.length; box.textContent = "";
+  if (!types.length) return;
+  const lab = document.createElement("span"); lab.textContent = T("typeLabel"); box.appendChild(lab);
+  for (const t of types) {
+    const its = vis.filter((it) => it.t === t), all = its.every((it) => state.sel.has(it.id));
+    const b = document.createElement("button"); b.type = "button";
+    b.textContent = `${typeName(t)} ${its.length}`; b.setAttribute("aria-pressed", String(all));
+    b.onclick = () => { its.forEach((it) => (all ? state.sel.delete(it.id) : state.sel.add(it.id))); changed(); };
+    box.appendChild(b);
+  }
+}
 function renderItems() {
   const cat = CATS.find((c) => c.id === state.cat);
   const vis = shownItems(cat);
+  renderTypes(cat, vis);
   $("catTitle").textContent = `${catLabel(cat)}（${vis.length}）`;
   const box = $("items"); box.textContent = "";
   for (const it of vis) {
@@ -1494,6 +1631,8 @@ function changed() { persist(); renderTabs(); renderItems(); drawFeatures(); }
 $("btnAll").onclick = () => { shownItems(CATS.find((c) => c.id === state.cat)).forEach((i) => state.sel.add(i.id)); changed(); };
 $("btnNone").onclick = () => { shownItems(CATS.find((c) => c.id === state.cat)).forEach((i) => state.sel.delete(i.id)); changed(); };
 $("btnClear").onclick = () => { state.sel.clear(); state.prefs.clear(); renderPrefs(); changed(); };
+$("optPlates").checked = state.plates;
+$("optPlates").onchange = (e) => { state.plates = e.target.checked; persist(); applyLang(); drawFeatures(); };
 for (const [id, key] of [["optNames", "names"], ["optKana", "kana"], ["optPref", "pref"]]) {
   $(id).checked = state[key];
   $(id).onchange = (e) => { state[key] = e.target.checked; persist(); applyOptions(); };
@@ -2076,7 +2215,7 @@ $("btnBlank").onclick = openPrintDlg;
 function quizStatus() {
   const total = quiz.ids.length;
   if (quiz.graded) {
-    const c = quiz.ids.filter((id) => quiz.answers.get(id) === id).length;
+    const c = quiz.ids.filter((id) => quizRight(ITEM.get(id))).length;
     return T("quizScore", Math.round((c / total) * 100), c, total);
   }
   return T("quizProgress", quiz.answers.size, total);
@@ -2087,13 +2226,17 @@ function renderQuizBar() {
   if (!quiz.on) return;
   $("quizStatus").textContent = quizStatus();
   $("qCheck").disabled = quiz.graded;
+  // 位置題：顯示目前要找的地名
+  const ask = $("qAsk"), q = quiz.mode === "place" && !quiz.graded ? quizNext() : null;
+  ask.hidden = quiz.mode !== "place" || quiz.graded;
+  ask.textContent = q ? T("placeAsk", nameOf(ITEM.get(q))) : T(quiz.answers.size < quiz.ids.length ? "placeOther" : "placeDone");
   // 地方分頁：每個地方顯示已作答數／題數（評分後顯示答對數）
   const box = $("qRegions"); box.textContent = "";
   $("quizBar").classList.toggle("multi", quiz.regions.length > 1);
   if (quiz.regions.length < 2) return;
   for (const r of quiz.regions) {
     const ids = quiz.ids.filter((id) => regionOf(ITEM.get(id)) === r);
-    const done = quiz.graded ? ids.filter((id) => quiz.answers.get(id) === id).length : ids.filter((id) => quiz.answers.has(id)).length;
+    const done = quiz.graded ? ids.filter((id) => quizRight(ITEM.get(id))).length : ids.filter((id) => quiz.answers.has(id)).length;
     const b = document.createElement("button"); b.type = "button";
     b.textContent = `${regionName(r)} ${done}/${ids.length}`;
     b.setAttribute("aria-pressed", String(quiz.region === r));
@@ -2109,10 +2252,17 @@ function zoomToQuiz() {
   const bar = $("quizBar"), top = bar.hidden ? 0 : bar.getBoundingClientRect().bottom - wrap.getBoundingClientRect().top;
   if (fs.length) zoomToGeom({ type: "FeatureCollection", features: fs }, null, Math.max(0, top));
 }
-function startQuiz() {
-  const ids = ITEM_LIST.filter((it) => state.sel.has(it.id) && shown(it)).map((it) => it.id);
+function openQuizDlg() {
+  const sel = ITEM_LIST.filter((it) => state.sel.has(it.id) && shown(it));
+  if (sel.length < 2) { toast(T("quizNeed")); return; }
+  $("qmType").disabled = sel.filter((it) => it.t).length < 2;
+  setSheet(false); $("quizDlg").hidden = false;
+}
+function startQuiz(mode) {
+  $("quizDlg").hidden = true;
+  const ids = ITEM_LIST.filter((it) => state.sel.has(it.id) && shown(it) && (mode !== "type" || it.t)).map((it) => it.id);
   if (ids.length < 2) { toast(T("quizNeed")); return; }
-  quiz.on = true; quiz.graded = false; quiz.ids = ids; quiz.answers = new Map();
+  quiz.on = true; quiz.mode = mode; quiz.graded = false; quiz.ids = ids; quiz.answers = new Map();
   quiz.pool = d3.shuffle(ids.slice());
   // 題目分布在多個地方時依地方分段，從第一個地方開始
   const rs = new Set(ids.map((id) => regionOf(ITEM.get(id))));
@@ -2122,7 +2272,7 @@ function startQuiz() {
   renderQuizBar(); drawFeatures(); zoomToQuiz();
 }
 function exitQuiz() {
-  quiz.on = false; quiz.graded = false; quiz.answers = new Map(); quiz.regions = []; quiz.region = null;
+  quiz.on = false; quiz.mode = "name"; quiz.graded = false; quiz.answers = new Map(); quiz.regions = []; quiz.region = null; quiz.hits = [];
   closePicker(); renderQuizBar(); drawFeatures();
 }
 function closePicker() { $("picker").hidden = true; svg.selectAll(".qbox.active").classed("active", false); }
@@ -2132,17 +2282,20 @@ function openPicker(target, ev, lg) {
   svg.selectAll(".qbox.active").classed("active", false);
   if (lg) lg.select(".qbox").classed("active", true);
   const list = $("pickList"); list.textContent = "";
-  const used = new Set(quiz.answers.values());
+  const used = new Set(quiz.mode === "type" ? [] : quiz.answers.values());
   const cur = quiz.answers.get(target.id);
   if (cur) {
     const c = document.createElement("button"); c.type = "button"; c.className = "clear"; c.textContent = T("quizClear");
     c.onclick = () => { quiz.answers.delete(target.id); closePicker(); renderQuizBar(); drawFeatures(); };
     list.appendChild(c);
   }
-  const free = quiz.pool.filter((id) => !used.has(id) && (!quiz.region || regionOf(ITEM.get(id)) === quiz.region));
+  const inR = (id) => !quiz.region || regionOf(ITEM.get(id)) === quiz.region;
+  // 類型題：選項是這一段題目中出現的類型（可重複使用）
+  const free = quiz.mode === "type" ? TYPE_ORDER.filter((t) => quiz.ids.some((id) => inR(id) && ITEM.get(id).t === t))
+    : quiz.pool.filter((id) => !used.has(id) && inR(id));
   if (!free.length) { const m = document.createElement("div"); m.className = "msg"; m.textContent = T("quizEmpty"); list.appendChild(m); }
   for (const id of free) {
-    const b = document.createElement("button"); b.type = "button"; b.textContent = nameOf(ITEM.get(id));
+    const b = document.createElement("button"); b.type = "button"; b.textContent = quiz.mode === "type" ? typeName(id) : nameOf(ITEM.get(id));
     b.onclick = () => { quiz.answers.set(target.id, id); closePicker(); renderQuizBar(); drawFeatures(); };
     list.appendChild(b);
   }
@@ -2155,7 +2308,20 @@ function openPicker(target, ev, lg) {
   }
 }
 $("pickClose").onclick = closePicker;
-$("btnQuiz").onclick = startQuiz;
+$("btnQuiz").onclick = openQuizDlg;
+for (const [id, m] of [["qmName", "name"], ["qmPlace", "place"], ["qmType", "type"]]) $(id).onclick = () => startQuiz(m);
+$("qmCancel").onclick = () => ($("quizDlg").hidden = true);
+// 位置題：點地圖作答（拖曳縮放後的 click 由 d3-zoom 擋掉）
+$("map").addEventListener("click", (e) => {
+  if (!quiz.on || quiz.mode !== "place" || quiz.graded) return;
+  const q = quizNext();
+  if (!q) { toast(T(quiz.answers.size < quiz.ids.length ? "placeOther" : "placeDone")); return; }
+  const r = $("map").getBoundingClientRect();
+  const hit = hitAt((e.clientX - r.left - transform.x) / transform.k, (e.clientY - r.top - transform.y) / transform.k);
+  quiz.answers.set(q, hit ? hit.id : "none");
+  toast(hit && hit.id === q ? T("placeRight") : T("placeWrong", nameOf(ITEM.get(q))));
+  renderQuizBar(); drawFeatures();
+});
 $("qCheck").onclick = () => { quiz.graded = true; closePicker(); renderQuizBar(); drawFeatures(); };
 let exitArmed = null;
 $("qExit").onclick = () => {
@@ -2235,7 +2401,7 @@ function applyLang() {
   $("opacityOpt").hidden = !state.relief;
   $("opacity").value = state.opacity; $("opacityVal").textContent = state.opacity + "%";
   // 顯示設定收起時的摘要
-  $("viewSum").textContent = [T(state.mode), state.relief ? T(state.relief === "gray" ? "reliefGray" : "reliefColor") + " " + state.opacity + "%" : T("reliefOff")].join("・");
+  $("viewSum").textContent = [T(state.mode), state.relief ? T(state.relief === "gray" ? "reliefGray" : "reliefColor") + " " + state.opacity + "%" : T("reliefOff"), state.plates ? T("plates") : ""].filter(Boolean).join("・");
   svg.select(".credit:not(.credit2):not(.credit3)").text(T("credit"));
   renderQuizBar();
 }
