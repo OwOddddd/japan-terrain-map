@@ -600,16 +600,13 @@ const I18N = {
 };
 const CAT_ZH = { range: "山脈・山地", volcano: "火山", mountain: "山", plain: "平野", plateau: "台地・高原", basin: "盆地",
   river: "河川", lake: "湖泊", peninsula: "半島", cape: "岬角", bay: "灣・灘", sea: "海・海峽・水道", current: "海流",
-  island: "島嶼", isgroup: "諸島・列島", infra: "用水・聯絡橋", hazard: "災害", trench: "海溝・海槽", fault: "構造線", landmark: "代表地形" };
+  island: "島嶼", isgroup: "諸島・列島", trench: "海溝・海槽", fault: "構造線", landmark: "代表地形" };
 // 中文名稱：日文新字體轉繁體，「ヶ」省略、「の／ノ」改「之」；片假名名稱另外翻譯
 const ZH_NAME = { "シラス台地": "白砂台地", "四国カルスト": "四國喀斯特", "サロマ湖": "佐呂間湖", "オホーツク海": "鄂霍次克海",
   "東シナ海": "東海", "フィリピン海": "菲律賓海", "トカラ海峡": "吐噶喇海峽", "トカラ列島": "吐噶喇列島", "リマン海流": "里曼寒流",
   "相模トラフ": "相模海槽", "駿河トラフ": "駿河海槽", "南海トラフ": "南海海槽", "フォッサマグナ": "大地溝帶",
   "黒潮（日本海流）": "黑潮（日本暖流）", "親潮（千島海流）": "親潮（千島寒流）", "対馬海流": "對馬暖流",
   "尖閣諸島": "釣魚臺列嶼（尖閣諸島）", "竹島": "獨島（竹島）", "日本アルプス": "日本阿爾卑斯", "姶良カルデラ": "姶良破火山口",
-  "神戸・鳴門ルート": "神戶・鳴門路線", "児島・坂出ルート": "兒島・坂出路線", "尾道・今治ルート": "尾道・今治路線",
-  "南海トラフ地震の想定震源域": "南海海槽地震預估震源區", "ゼロメートル地帯（東京湾岸）": "零公尺地帶（東京灣岸）",
-  "ゼロメートル地帯（濃尾平野）": "零公尺地帶（濃尾平野）", "ゼロメートル地帯（大阪湾岸）": "零公尺地帶（大阪灣岸）",
   "ニセコアンヌプリ": "二世古安努普利", "サロベツ原野": "薩羅別原野" };
 const ZH_CHAR = Object.fromEntries([..."両兩乗乘亀龜児兒剣劍剱劍国國塩鹽増增壱壹売賣奥奧対對峡峽広廣恋戀択擇曽曾来來桜櫻歩步歯齒沢澤浅淺浜濱湾灣湿濕瀬瀨焼燒状狀狭狹礼禮禅禪穂穗竜龍総總経經縄繩蔵藏讃讚豊豐軽輕辺邊関關隠隱静靜騨驒黒黑黄黃横橫徳德糸絲与與会會猪豬内內戸戶万萬予豫恵惠釈釋摂攝属屬体體氷冰条條砺礪払拂荘莊"]
   .reduce((a, c, i, arr) => (i % 2 ? a : [...a, [c, arr[i + 1]]]), []));
@@ -1028,8 +1025,8 @@ function drawFeatures() {
       } else if (shape === "line") {
         // 沿岸線段（リアス海岸、砂浜海岸、砂州）、灘的沿岸弧線
         lines.append("path").attr("d", path(geom)).attr("fill", "none").attr("stroke", inkMode ? "#333" : cat.color)
-          .attr("stroke-opacity", .8).attr("stroke-width", k === "water" || cat.id === "infra" || cat.id === "hazard" ? 3 : 5)
-          .attr("stroke-dasharray", cat.id === "hazard" ? "8 4" : null).attr("stroke-linecap", "round").attr("stroke-linejoin", "round")
+          .attr("stroke-opacity", .8).attr("stroke-width", k === "water" ? 3 : 5)
+          .attr("stroke-linecap", "round").attr("stroke-linejoin", "round")
           .attr("vector-effect", "non-scaling-stroke");
       } else if (k === "group") {
         // 諸島・列島：以平滑的虛線圈起
