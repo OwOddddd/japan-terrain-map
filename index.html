@@ -1733,9 +1733,9 @@ function addLabel(it, cat, lonlat, mode) {
       const bw = bt.node().getComputedTextLength();
       let rt = null, rw = 0;
       if (s.r) {
-        // 一般解析度螢幕（多為電腦）上 0.55 倍約 6.6px 會糊掉：放大到 0.7 倍並減細白邊；高解析度手機維持原樣
+        // 一般解析度螢幕（多為電腦）上 0.55 倍約 6.6px 會糊掉：固定 10px 並減細白邊；高解析度手機維持原樣
         const lowDpi = (window.devicePixelRatio || 1) < 2;
-        rt = lg.append("text").attr("class", "rb").attr("font-size", size * (lowDpi ? 0.7 : 0.55)).attr("stroke-width", lowDpi ? 2 : 2.4).text(s.r);
+        rt = lg.append("text").attr("class", "rb").attr("font-size", lowDpi ? 10 : size * 0.55).attr("stroke-width", lowDpi ? 2 : 2.4).text(s.r);
         rw = rt.node().getComputedTextLength();
       }
       const w = Math.max(bw, rw);
@@ -1747,8 +1747,8 @@ function addLabel(it, cat, lonlat, mode) {
     ox = align === "start" ? dx : -x / 2;
     oy = size * 0.36 + (align === "middle" && hasRuby ? size * 0.25 : 0);
     // 點擊範圍（透明），讓整個名稱都容易點到
-    lg.insert("rect", "text").attr("x", -2).attr("y", -size * (hasRuby ? 1.75 : 1)).attr("width", x + 4)
-      .attr("height", size * (hasRuby ? 2.1 : 1.35)).attr("fill", "transparent").attr("stroke", "none");
+    lg.insert("rect", "text").attr("x", -2).attr("y", -size * (hasRuby ? 1.85 : 1)).attr("width", x + 4)
+      .attr("height", size * (hasRuby ? 2.2 : 1.35)).attr("fill", "transparent").attr("stroke", "none");
     lg.on("click", (e) => { e.stopPropagation(); speak(it, lg); });
   }
   lg.attr("transform", `translate(${ox},${oy})`);
