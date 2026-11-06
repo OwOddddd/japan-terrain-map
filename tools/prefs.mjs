@@ -70,7 +70,8 @@ for (const cat of CATS) for (const it of cat.items) {
   let samples = null;
   if (PRECISE_CATS.has(cat.id) && PRECISE.has(it.n)) samples = polySamples(PRECISE.get(it.n));
   else if (k === "river") samples = lineSamples(RIVERS[it.n].coordinates);
-  else if (k === "lake") samples = polySamples(LAKES[it.n]);
+  else if (k === "lake" && LAKES[it.n]) samples = polySamples(LAKES[it.n]);
+  else if (it.union) samples = it.union.flatMap((n) => polySamples(PRECISE.get(n)));
   else if (it.p) samples = polySamples({ type: "Polygon", coordinates: [[...it.p, it.p[0]]] });
   else if (it.s) samples = lineSamples([it.s]);
   if (samples) {
@@ -80,12 +81,15 @@ for (const cat of CATS) for (const it of cat.items) {
       for (const id2 of set) { const P = PREFS.find((q) => q.id === id2); if (inBox(P.b, p) && partsHave(P.parts, p)) { hit = id2; break; } }
       if (!hit) { const id2 = prefAt(p); if (id2) set.add(id2); }
     }
-  } else if (it.c) {
-    const id2 = prefAt(it.c);
+  }
+  // 點，或線・面完全落在海上（灘的弧線、沿岸線段）：用代表點找附近的縣
+  const c = it.c || (it.s && it.s[Math.floor(it.s.length / 2)]) || (it.p && it.p[0]);
+  if ((!samples || !set.size) && c) {
+    const id2 = prefAt(c);
     if (id2) set.add(id2);
-    for (const id3 of nearPrefs(it.c, TOL[k] || 10)) set.add(id3);
+    for (const id3 of nearPrefs(c, TOL[k] || 10)) set.add(id3);
     // 標示點離岸較遠（灘、群島的名稱位置）：改取 60 km 內最近的縣
-    if (!set.size) { const near = nearPrefs(it.c, 60); if (near.length) set.add(near.sort((x, y) => minDist(it.c, x) - minDist(it.c, y))[0]); }
+    if (!set.size) { const near = nearPrefs(c, 60); if (near.length) set.add(near.sort((x, y) => minDist(c, x) - minDist(c, y))[0]); }
   }
   out[id] = [...set].sort((a, b) => a - b);
 }

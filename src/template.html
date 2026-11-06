@@ -74,6 +74,7 @@ button:disabled { cursor: not-allowed; opacity: .5; }
 .lvrow { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .tabs, .items-head, .items, .fold, .vcredit { grid-column: 1 / -1; min-width: 0; }
 .vcredit { margin: 0; font-size: 11px; color: var(--muted); }
+.unoff { font-size: 11px; color: var(--muted); margin-left: -8px; }
 /* 可展開區塊（顯示設定、都道府縣、群組） */
 .fold { border-top: 1px dashed var(--line); padding-top: 8px; }
 .fold > summary { cursor: pointer; font-size: 13px; color: var(--muted); display: flex; align-items: baseline; gap: 8px; list-style: none; user-select: none; }
@@ -313,6 +314,7 @@ body.quiz #btnSheet, body.quiz #btnExport { pointer-events: none; opacity: .45; 
     <span class="seg" role="group" data-t-aria="detailLabel">
       <button type="button" id="mSimple" data-t="simple"></button><button type="button" id="mDetail" data-t="detail"></button>
     </span>
+    <small class="unoff" data-t="unofficial"></small>
     <span class="lv-group" id="reliefOpt" role="group" data-t-aria="relief">
       <label class="opt"><input type="checkbox" id="optRelief"> <span data-t="reliefColor"></span></label>
       <label class="opt"><input type="checkbox" id="optReliefGray"> <span data-t="reliefGray"></span></label>
@@ -467,7 +469,7 @@ const I18N = {
   ja: {
     viewSettings: "表示設定", reliefOff: "起伏図なし",
     reliefColor: "起伏図（カラー）", reliefGray: "起伏図（グレー）", fossa: "フォッサマグナ",
-    simple: "簡易", detail: "詳細", relief: "起伏図", opacity: "地形の不透明度", detailLabel: "範囲の表し方",
+    simple: "簡易", detail: "推定範囲", unofficial: "※公式の境界ではありません", aliasOf: (a) => `別名：${a}`, relief: "起伏図", opacity: "地形の不透明度", detailLabel: "範囲の表し方",
     prefsTitle: "都道府県（選ぶと、その都道府県に一部でもかかる地形をすべて選択）",
     prefAdded: (n, c) => `「${n}」の地形 ${c} 件を選択しました`, prefRemoved: (n) => `「${n}」の選択を解除しました`,
     title: "日本地形マップ", subtitle: "地形を選び、地名をタップすると読み上げます", pick: "地形を選ぶ", export: "画像を保存", exportShort: "保存",
@@ -511,7 +513,7 @@ const I18N = {
   zh: {
     viewSettings: "顯示設定", reliefOff: "無起伏圖",
     reliefColor: "彩色起伏圖", reliefGray: "灰階起伏圖", fossa: "大地溝帶",
-    simple: "簡易", detail: "精緻", relief: "起伏圖", opacity: "地形不透明度", detailLabel: "範圍顯示方式",
+    simple: "簡易", detail: "推定範圍", unofficial: "※非官方邊界", aliasOf: (a) => `別名：${a}`, relief: "起伏圖", opacity: "地形不透明度", detailLabel: "範圍顯示方式",
     prefsTitle: "都道府縣（選取後，只要有一部分在該縣內的地形都會一起勾選）",
     prefAdded: (n, c) => `已勾選「${n}」的 ${c} 個地形`, prefRemoved: (n) => `已取消「${n}」`,
     title: "日本地形地圖", subtitle: "勾選地形，點地名可聽讀音", pick: "選擇地形", export: "輸出圖片", exportShort: "輸出",
@@ -555,12 +557,13 @@ const I18N = {
 };
 const CAT_ZH = { range: "山脈・山地", volcano: "火山", mountain: "山", plain: "平野", plateau: "台地・高原", basin: "盆地",
   river: "河川", lake: "湖泊", peninsula: "半島", cape: "岬角", bay: "灣・灘", sea: "海・海峽・水道", current: "海流",
-  island: "島嶼", trench: "海溝・海槽", fault: "構造線", landmark: "代表地形" };
+  island: "島嶼", isgroup: "諸島・列島", trench: "海溝・海槽", fault: "構造線", landmark: "代表地形" };
 // 中文名稱：日文新字體轉繁體，「ヶ」省略、「の／ノ」改「之」；片假名名稱另外翻譯
 const ZH_NAME = { "シラス台地": "白砂台地", "四国カルスト": "四國喀斯特", "サロマ湖": "佐呂間湖", "オホーツク海": "鄂霍次克海",
   "東シナ海": "東海", "フィリピン海": "菲律賓海", "トカラ海峡": "吐噶喇海峽", "トカラ列島": "吐噶喇列島", "リマン海流": "里曼寒流",
   "相模トラフ": "相模海槽", "駿河トラフ": "駿河海槽", "南海トラフ": "南海海槽", "フォッサマグナ": "大地溝帶",
   "黒潮（日本海流）": "黑潮（日本暖流）", "親潮（千島海流）": "親潮（千島寒流）", "対馬海流": "對馬暖流",
+  "尖閣諸島": "釣魚臺列嶼（尖閣諸島）", "竹島": "獨島（竹島）",
   "ニセコアンヌプリ": "二世古安努普利", "サロベツ原野": "薩羅別原野" };
 const ZH_CHAR = Object.fromEntries([..."両兩乗乘亀龜児兒剣劍剱劍国國塩鹽増增壱壹売賣奥奧対對峡峽広廣恋戀択擇曽曾来來桜櫻歩步歯齒沢澤浅淺浜濱湾灣湿濕瀬瀨焼燒状狀狭狹礼禮禅禪穂穗竜龍総總経經縄繩蔵藏讃讚豊豐軽輕辺邊関關隠隱静靜騨驒黒黑黄黃横橫徳德糸絲与與会會猪豬内內戸戶万萬予豫恵惠釈釋摂攝属屬体體氷冰条條砺礪払拂荘莊"]
   .reduce((a, c, i, arr) => (i % 2 ? a : [...a, [c, arr[i + 1]]]), []));
@@ -627,7 +630,12 @@ const shadeOf = (it) => {
   const c = d3.color(it.cat.color), k = SHADE.get(it.n) % 4;
   return [c, c.darker(0.6), c.brighter(0.75), c.darker(1.1)][k].formatHex();
 };
+// 點狀類別（代表地形、湾・灘、半島）中改用範圍或線條表示的項目
+const SHAPED = (it) => (["dot", "water", "text"].includes(it.cat.kind) && (it.p || it.union) ? "area"
+  : ["dot", "water"].includes(it.cat.kind) && it.s ? "line" : null);
 function geomOf(it) {
+  // 由數個地形的範圍合併（例：日本アルプス＝飛驒・木曽・赤石山脈）
+  if (it.union) return { type: "MultiPolygon", coordinates: it.union.flatMap((n) => { const g = PRECISE.get(n); return !g ? [] : g.type === "Polygon" ? [g.coordinates] : g.coordinates; }) };
   const pg = preciseOf(it);
   if (pg) return pg;
   const real = realOf(it);
@@ -736,7 +744,7 @@ const prefMesh = topojson.mesh(TOPO, TOPO.objects.japan, (a, b) => a !== b);
 const coastMesh = topojson.mesh(TOPO, TOPO.objects.japan, (a, b) => a === b);
 const FIT = { type: "LineString", coordinates: [[129.6, 31.0], [145.9, 45.55]] };
 const FIT_ALL = [[122.8, 24.0], [148.2, 46.0]];
-let leaderG, W = 0, H = 0, projection, path, zoomG, labelG, transform = d3.zoomIdentity, labels = [], currents = [], obstacles = [];
+let leaderG, markG, W = 0, H = 0, projection, path, zoomG, labelG, transform = d3.zoomIdentity, labels = [], currents = [], obstacles = [];
 const curve = d3.line().curve(d3.curveCatmullRom.alpha(0.5));
 // 白地圖輸出與測驗用的狀態
 let blankMode = false, blankKey = [];
@@ -839,6 +847,7 @@ function buildBase(opt = {}) {
   zoomG.append("g").attr("id", "prefSel");
   labelG = svg.append("g").attr("id", "labels");
   leaderG = labelG.append("g").attr("id", "leaders");
+  markG = labelG.append("g").attr("id", "marks");
   svg.append("g").attr("id", "legend");
   if (opt.offscreen) return;
   const cfs = W < 500 ? 8.5 : 10;
@@ -929,6 +938,7 @@ function drawFeatures() {
   }
   labelG.selectAll("*").remove();
   leaderG = labelG.append("g").attr("id", "leaders");
+  markG = labelG.append("g").attr("id", "marks");
   labels = []; currents = []; obstacles = [];
   drawLegend();
   const entries = [];
@@ -939,7 +949,24 @@ function drawFeatures() {
       const geom = geomOf(it);
       const k = cat.kind;
       const PAT = { plain: "plain", plateau: "plateau", basin: "basin", range: "range" }[cat.id];
-      if (inkMode && (k === "area" || (k === "band" && preciseOf(it)))) {
+      const shape = SHAPED(it);
+      if (shape === "area") {
+        // 代表地形等的範圍：淡色填色＋外框（列印配色：白底虛線框）
+        lines.append("path").attr("d", path(geom)).attr("fill", inkMode ? "#fff" : cat.color).attr("fill-opacity", inkMode ? 0 : .3)
+          .attr("stroke", inkMode ? "#333" : cat.color).attr("stroke-width", 1.4).attr("stroke-dasharray", inkMode ? "4 2" : null)
+          .attr("vector-effect", "non-scaling-stroke");
+      } else if (shape === "line") {
+        // 沿岸線段（リアス海岸、砂浜海岸、砂州）、灘的沿岸弧線
+        lines.append("path").attr("d", path(geom)).attr("fill", "none").attr("stroke", inkMode ? "#333" : cat.color)
+          .attr("stroke-opacity", .8).attr("stroke-width", k === "water" ? 3 : 5).attr("stroke-linecap", "round").attr("stroke-linejoin", "round")
+          .attr("vector-effect", "non-scaling-stroke");
+      } else if (k === "group") {
+        // 諸島・列島：以平滑的虛線圈起
+        const pts = it.p.map((c) => projection(c));
+        lines.append("path").attr("d", d3.line().curve(d3.curveCatmullRomClosed.alpha(0.5))(pts)).attr("fill", inkMode ? "none" : cat.color)
+          .attr("fill-opacity", .07).attr("stroke", inkMode ? "#333" : cat.color).attr("stroke-width", 1.6).attr("stroke-dasharray", "6 4")
+          .attr("vector-effect", "non-scaling-stroke");
+      } else if (inkMode && (k === "area" || (k === "band" && preciseOf(it)))) {
         // 列印配色：深灰外框＋類別花紋
         areas.append("path").attr("d", path(geom)).attr("fill", `url(#pat-${PAT || "plain"})`).attr("stroke", "#333")
           .attr("stroke-width", 1).attr("vector-effect", "non-scaling-stroke");
@@ -989,12 +1016,12 @@ function drawFeatures() {
         lakes.append("path").attr("d", path(geom)).attr("fill", cat.color).attr("stroke", "#2f7ab3")
           .attr("stroke-width", .8).attr("vector-effect", "non-scaling-stroke");
       }
-      const isRegion = k === "area" || k === "lake" || (k === "fault" && it.p) || (k === "band" && preciseOf(it));
+      const isRegion = shape === "area" || k === "group" || k === "area" || k === "lake" || (k === "fault" && it.p) || (k === "band" && preciseOf(it));
       let polys = null, anchor = null;
       if (isRegion) {
         polys = projectPolys(geom);
         // 精緻版、湖泊、沒有指定位置的範圍：用範圍內離邊界最遠的點當錨點，地名一定落在自己的範圍裡
-        if (preciseOf(it) || k === "lake" || !it.l) anchor = projection.invert(polylabel(largestPoly(polys)));
+        if (preciseOf(it) || k === "lake" || shape === "area" || !it.l) anchor = projection.invert(polylabel(largestPoly(polys)));
       }
       entries.push({ it, cat, k, geom, isRegion, polys, lonlat: anchor || labelPoint(it, geom) });
     }
@@ -1090,21 +1117,26 @@ function srcKey(it) {
 function addLabel(it, cat, lonlat, mode) {
   const p = projection(lonlat);
   const g = labelG.append("g");
-  const k = cat.kind;
-  let align = "middle", dx = 0, size = 12, color = "#2a332e";
+  // 有範圍或線條的代表地形・灘：不畫點符號，地名置中
+  const k = SHAPED(it) ? "shaped" : cat.kind;
+  let align = "middle", dx = 0, size = 12, color = "#2a332e", mk = null;
   if (k === "volcano" || k === "peak") {
-    // 列印配色：火山＝黑三角、山＝白三角
-    g.append("path").attr("d", "M0,-6L5.5,4H-5.5Z").attr("fill", inkMode ? (k === "volcano" ? "#222" : "#fff") : cat.color)
+    // 列印配色：火山＝黑三角、山＝白三角（符號另放，地名移開時符號留在原位）
+    mk = markG.append("g");
+    mk.append("path").attr("d", "M0,-6L5.5,4H-5.5Z").attr("fill", inkMode ? (k === "volcano" ? "#222" : "#fff") : cat.color)
       .attr("stroke", inkMode ? "#222" : "#fff").attr("stroke-width", inkMode ? 1.2 : 1);
     align = "start"; dx = 8; size = 11.5; color = cat.color;
   } else if (k === "dot") {
-    g.append("circle").attr("r", 3).attr("fill", inkMode ? "#222" : cat.color).attr("stroke", "#fff").attr("stroke-width", 1);
+    mk = markG.append("g");
+    mk.append("circle").attr("r", 3).attr("fill", inkMode ? "#222" : cat.color).attr("stroke", "#fff").attr("stroke-width", 1);
     align = "start"; dx = 6; size = 11.5; color = cat.color;
-  } else if (k === "band") { color = "#6b4320"; size = 12.5; }
+  } else if (k === "shaped") { color = d3.color(cat.color).darker(1.2).formatHex(); size = 12; }
+  else if (k === "band") { color = "#6b4320"; size = 12.5; }
   else if (k === "area") { color = d3.color(cat.color).darker(1.6).formatHex(); size = 12; }
   else if (k === "river") { color = "#1c5a99"; size = 11.5; }
   else if (k === "lake") { color = "#1c5a99"; size = 11; }
   else if (k === "text") { color = cat.color; size = 12; }
+  else if (k === "group") { color = d3.color(cat.color).darker(0.8).formatHex(); size = 12.5; }
   else if (k === "water") { color = cat.color; size = it.big ? 17 : 11.5; }
   else if (k === "current") { color = it.warm ? "#b8341f" : "#2b55aa"; size = 12; }
   else if (k === "trench" || k === "fault") { color = cat.color; size = 11.5; }
@@ -1167,7 +1199,7 @@ function addLabel(it, cat, lonlat, mode) {
   lg.attr("transform", `translate(${ox},${oy})`);
   const bb = lg.node().getBBox();
   // 沒有符號的地名（範圍、河川、海域）在畫面邊緣時可往內移，避免被切掉；有符號的點狀地形不移
-  const l = { g, p, lv: it.lv, key: "c", clamp: !["volcano", "peak", "dot"].includes(k), bb: { x: bb.x + ox, y: bb.y + oy, w: bb.width, h: bb.height } };
+  const l = { g, p, mk, lo: it.lo, lv: it.lv, key: "c", clamp: !["volcano", "peak", "dot"].includes(k), bb: { x: bb.x + ox, y: bb.y + oy, w: bb.width, h: bb.height } };
   labels.push(l);
   return l;
 }
@@ -1185,6 +1217,10 @@ function candidates(l) {
   return out;
 }
 function baseCandidates(l) {
+  if (l.lo) {
+    const ax = transform.applyX(l.p[0]) + l.lo[0], ay = transform.applyY(l.p[1]) + l.lo[1];
+    return [{ key: "olo", r: { x0: ax, y0: ay - l.bb.h / 2, x1: ax + l.bb.w, y1: ay + l.bb.h / 2 } }];
+  }
   const t = transform, bb = l.bb, gap = 3;
   const at = (key, x0, y0) => ({ key, r: { x0, y0, x1: x0 + bb.w, y1: y0 + bb.h } });
   const center = () => {
@@ -1261,9 +1297,10 @@ function hitObstacle(r, ob) {
 }
 function moveLabel(l, c) {
   l.key = c.key;
+  if (l.mk) l.mk.attr("transform", `translate(${transform.applyX(l.p[0])},${transform.applyY(l.p[1])})`);
   l.g.attr("transform", `translate(${c.r.x0 - l.bb.x},${c.r.y0 - l.bb.y})`);
   // 範圍外的地名：畫一條引線連到範圍內的錨點（白地圖的點狀・山脈帶圈號移開時也畫引線，但不加圓點）
-  if (!l.polys && !blankMode && !quiz.on) return;
+  if (!l.polys && !blankMode && !quiz.on && !l.lo) return;
   if (!l.leader) l.leader = leaderG.append("g").attr("class", "ldr");
   if (c.key[0] !== "o") { l.leader.attr("display", "none"); return; }
   const A = l.anchor || l.p, ax = transform.applyX(A[0]), ay = transform.applyY(A[1]), r = c.r;
@@ -1482,20 +1519,24 @@ function searchItems(q) {
   const sJa = toJa(s), sH = toHira(s);
   const scored = [];
   for (const it of ITEM_LIST) {
-    const names = [it.n, it.zh];
-    let sc = -1;
-    for (const n of names) {
+    let sc = -1, alias = null;
+    for (const n of [it.n, it.zh]) {
       if (n.startsWith(s) || n.startsWith(sJa)) sc = Math.max(sc, 3);
       else if (n.includes(s) || n.includes(sJa)) sc = Math.max(sc, 2);
+    }
+    // 別名（例：噴火湾→内浦湾、北アルプス→飛驒山脈）
+    for (const n of it.a || []) {
+      const v = n.startsWith(s) || n.startsWith(sJa) || n.startsWith(sH) ? 2.8 : n.includes(s) || n.includes(sJa) ? 1.8 : -1;
+      if (v > sc) { sc = v; alias = n; }
     }
     if (sc < 0 && it.k && /^[ぁ-ゖー]+$/.test(sH)) {
       const k = it.k.replace(/、/g, "");
       if (k.startsWith(sH)) sc = 1.5; else if (k.includes(sH)) sc = 1;
     }
-    if (sc >= 0) scored.push({ it, sc });
+    if (sc >= 0) scored.push({ it, sc, alias });
   }
   scored.sort((a, b) => b.sc - a.sc || a.it.n.length - b.it.n.length);
-  return { list: scored.slice(0, 8).map((x) => x.it) };
+  return { list: scored.slice(0, 8).map((x) => x.it), alias: new Map(scored.map((x) => [x.it, x.alias])) };
 }
 function renderSugg() {
   const box = $("sugg"), q = $("q").value;
@@ -1512,7 +1553,8 @@ function renderSugg() {
     b.type = "button"; b.setAttribute("role", "option"); b.id = "sg" + i;
     b.innerHTML = `<span></span><small></small>`;
     b.children[0].textContent = nameOf(it);
-    b.children[1].textContent = `${catLabel(it.cat)}${state.lang === "ja" && it.k ? "・" + it.k : ""}`;
+    const al = r.alias && r.alias.get(it);
+    b.children[1].textContent = `${catLabel(it.cat)}${al ? "・" + T("aliasOf", al) : state.lang === "ja" && it.k ? "・" + it.k : ""}`;
     b.onmousedown = (e) => e.preventDefault();
     b.onclick = () => gotoItem(it);
     box.appendChild(b);
@@ -1750,7 +1792,7 @@ function renderOffscreenMap(w, h, sheet = {}) {
     const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
     fc.features.push({ type: "Feature", geometry: { type: "MultiPoint", coordinates: [[cx - MIN / 2, cy - MIN / 2], [cx + MIN / 2, cy + MIN / 2]] } });
   }
-  const saved = { svg, W, H, projection, path, zoomG, labelG, leaderG, transform, labels, currents, obstacles };
+  const saved = { svg, W, H, projection, path, zoomG, labelG, leaderG, markG, transform, labels, currents, obstacles };
   const host = $("offscreen"); host.textContent = "";
   host.style.width = w + "px"; host.style.height = h + "px";
   const ns = "http://www.w3.org/2000/svg", node = document.createElementNS(ns, "svg");
@@ -1764,7 +1806,7 @@ function renderOffscreenMap(w, h, sheet = {}) {
     return { node, key: blankKey.slice() };
   } finally {
     blankMode = false; blankOnly = null; blankStart = 1; blankRegion = null;
-    ({ svg, W, H, projection, path, zoomG, labelG, leaderG, transform, labels, currents, obstacles } = saved);
+    ({ svg, W, H, projection, path, zoomG, labelG, leaderG, markG, transform, labels, currents, obstacles } = saved);
   }
 }
 // A4 頁面（CSS px，96 dpi）；輸出時放大 2.5 倍約 240 dpi
