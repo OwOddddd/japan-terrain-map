@@ -493,7 +493,7 @@ const I18N = {
     viewSettings: "表示設定", reliefOff: "起伏図なし", plates: "プレート境界",
     plPA: "太平洋プレート", plNA: "北アメリカプレート", plEU: "ユーラシアプレート", plPH: "フィリピン海プレート",
     hazOpen: "重ねるハザードマップで見る ↗", typeLabel: "種類：",
-    type_caldera: "カルデラ湖", type_lagoon: "海跡湖・潟湖", type_fault: "断層湖", type_dammed: "堰止湖", type_fan: "扇状地", type_delta: "三角州",
+    type_caldera: "カルデラ湖", type_lagoon: "海跡湖・潟湖", type_fault: "断層湖", type_dammed: "堰止湖", type_artificial: "人造湖", type_fan: "扇状地", type_delta: "三角州",
     type_terrace: "段丘", type_spit: "砂州・砂嘴", type_dune: "砂丘", type_ria: "リアス海岸", type_beach: "砂浜海岸", type_reclaim: "干拓地",
     type_wetland: "湿原・干潟", type_volcanic: "火山地形", type_karst: "カルスト", type_gorge: "峡谷", type_tombolo: "陸繋島",
     quizMode: "テストの形式", qmName: "地名を答える", qmNameD: "地図の空欄に地名を選んで入れます",
@@ -547,7 +547,7 @@ const I18N = {
     viewSettings: "顯示設定", reliefOff: "無起伏圖", plates: "板塊邊界",
     plPA: "太平洋板塊", plNA: "北美板塊", plEU: "歐亞板塊", plPH: "菲律賓海板塊",
     hazOpen: "在災害潛勢地圖查看 ↗", typeLabel: "類型：",
-    type_caldera: "破火山口湖", type_lagoon: "潟湖・海跡湖", type_fault: "斷層湖", type_dammed: "堰塞湖", type_fan: "沖積扇", type_delta: "三角洲",
+    type_caldera: "破火山口湖", type_lagoon: "潟湖・海跡湖", type_fault: "斷層湖", type_dammed: "堰塞湖", type_artificial: "人工湖", type_fan: "沖積扇", type_delta: "三角洲",
     type_terrace: "階地", type_spit: "沙洲・沙嘴", type_dune: "沙丘", type_ria: "谷灣式海岸", type_beach: "沙灘海岸", type_reclaim: "干拓地",
     type_wetland: "濕原・潮間帶", type_volcanic: "火山地形", type_karst: "喀斯特", type_gorge: "峽谷", type_tombolo: "陸連島",
     quizMode: "測驗方式", qmName: "回答地名", qmNameD: "在地圖空格中選入地名",
@@ -1550,7 +1550,7 @@ function renderTabs() {
   }
 }
 // 類型（湖：カルデラ湖等；代表地形：扇状地等）。按一下勾選或取消該類型的全部地形
-const TYPE_ORDER = ["caldera", "lagoon", "fault", "dammed", "fan", "delta", "terrace", "spit", "dune", "ria", "beach", "reclaim", "wetland", "volcanic", "karst", "gorge", "tombolo"];
+const TYPE_ORDER = ["caldera", "lagoon", "fault", "dammed", "artificial", "fan", "delta", "terrace", "spit", "dune", "ria", "beach", "reclaim", "wetland", "volcanic", "karst", "gorge", "tombolo"];
 const typeName = (t) => T("type_" + t);
 function renderTypes(cat, vis) {
   const box = $("types"), types = TYPE_ORDER.filter((t) => vis.some((it) => it.t === t));
